@@ -88,6 +88,6 @@ jobs:
     - name: Deploy private website
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       run: |
-        ssh-keyscan -H ${{ secrets.WEBSITE_IP }} >> ~/.ssh/known_hosts
-        rsync -r --delete _output/* website@${{ secrets.WEBSITE_IP }}:/home/website/public
+        ssh-keyscan -H xdsl-workshop.datenvorr.at >> ~/.ssh/known_hosts
+        rsync -r --delete _output/* website@xdsl-workshop.datenvorr.at:/home/website/public
 
