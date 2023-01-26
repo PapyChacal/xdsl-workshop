@@ -1,0 +1,93 @@
+name: Deploy JupiterLyte Page
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Setup Key
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.WEBSITE_PK }}
+
+    - name: Upgrade pip
+      run: |
+        pip install --upgrade pip
+
+    - name: Checkout xDSL
+      run: |
+        pip download -r requirements.txt --no-deps  --no-binary :all:
+        mkdir xdsl
+        tar -xvf xdsl-*.tar.gz -C xdsl --strip-components=1
+        rm xdsl-*.tar.gz
+
+    - name: Install dependencies
+      run: |
+        python -m pip install jupyterlite[all] libarchive-c build pyodide-build
+
+    - name: Build xDSL source distribution
+      run: |
+        cd xdsl
+        python setup.py sdistpi
+
+    # Pyodide is cached, so cloned only if not present in the cache, otherwise
+    # just checked out to whatever desired version and partially rebuilt.
+
+    - name: Restore cached Pyodide tree
+      id: cache-pyodide
+      uses: actions/cache@v3
+      with:
+        path: pyodide
+        key: pyodide
+
+    - name: Clone pyodide if not cached
+      if: steps.cache-pyodide.outputs.cache-hit != 'true'
+      run: git clone https://github.com/pyodide/pyodide.git
+
+    # Clean the xDSL and FrozenList package folders, generate their skeletons
+    # and do the necessary updates before building.
+    - name: Build custom Pyodide distribution
+      run: |
+        
+        cd pyodide
+        git fetch --all
+        git checkout 0.22.0a3
+        python -m pip install -r requirements.txt
+        sudo apt update && sudo apt install f2c
+        
+        rm packages/xdsl packages/frozenlist -rf
+        pyodide skeleton pypi xdsl
+        pyodide skeleton pypi frozenlist
+        
+        ../.github/workflows/update_xdsl_pyodide_build.py packages/xdsl/meta.yaml ../xdsl
+        
+        PYODIDE_PACKAGES="frozenlist,coverage,xdsl" make
+
+    - name: Build the JupyterLite site
+      run: |
+        mkdir content
+        cp xdsl/docs/* content -r
+        
+        rm -rf pyodide/pyodide
+        mkdir pyodide/pyodide
+        mv pyodide/dist pyodide/pyodide/pyodide
+        
+        python -m jupyter lite build --contents content --pyodide pyodide/pyodide
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v1
+      with:
+        path: ./_output
+
+    - name: Deploy private website
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        ssh-keyscan -H ${{ secrets.WEBSITE_IP }} >> ~/.ssh/known_hosts
+        rsync -r --delete _output/* website@${{ secrets.WEBSITE_IP }}:/home/website/public
+
