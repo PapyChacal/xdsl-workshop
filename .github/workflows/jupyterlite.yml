@@ -44,7 +44,7 @@ jobs:
 
     - name: Restore cached Pyodide tree
       id: cache-pyodide
-      uses: actions/cache@v3
+      uses: actions/cache/restore@v3
       with:
         path: pyodide
         key: pyodide
@@ -71,6 +71,13 @@ jobs:
         ../.github/workflows/update_xdsl_pyodide_build.py packages/xdsl/meta.yaml ../xdsl
         
         PYODIDE_PACKAGES="frozenlist,coverage,xdsl" make
+
+    - name: Cache Pyodide tree
+      id: cache-pyodide
+      uses: actions/cache/save@v3
+      with:
+        path: pyodide
+        key: pyodide
 
     - name: Build the JupyterLite site
       run: |
