@@ -8,7 +8,7 @@ jobs:
     steps:
 
     - uses: actions/checkout@v3
-    
+
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -37,7 +37,7 @@ jobs:
     - name: Build xDSL source distribution
       run: |
         cd xdsl
-        python setup.py sdistpi
+        python setup.py sdist
 
     # Pyodide is cached, so cloned only if not present in the cache, otherwise
     # just checked out to whatever desired version and partially rebuilt.
