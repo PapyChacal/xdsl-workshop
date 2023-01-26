@@ -40,9 +40,6 @@ jobs:
       run: |
         pip install nbval
 
-    - name: Run examples/tutorials
+    - name: Test all the notebooks
       run: |
-        for i in $(find -iname "*.ipynb")
-        do
-        pytest --nbval $i -vv
-        done
+        pytest --nbval $(find -iname "*.ipynb") -vv
