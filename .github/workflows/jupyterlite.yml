@@ -73,7 +73,6 @@ jobs:
         PYODIDE_PACKAGES="frozenlist,coverage,xdsl" make
 
     - name: Cache Pyodide tree
-      id: cache-pyodide
       uses: actions/cache/save@v3
       with:
         path: pyodide
