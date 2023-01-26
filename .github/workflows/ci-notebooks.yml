@@ -28,7 +28,7 @@ jobs:
     - name: Checkout xDSL
       run: |
         XDSL_COMMIT=$(grep xdsl requirements.txt|grep -o -P '(?<=@).*(?=#)')
-        git clone git@github.com:xdslproject/xdsl.git
+        git clone https://github.com/xdslproject/xdsl.git
         cd xdsl
         git checkout $XDSL_COMMIT
 
