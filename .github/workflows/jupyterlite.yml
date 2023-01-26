@@ -25,10 +25,10 @@ jobs:
 
     - name: Checkout xDSL
       run: |
-        pip download -r requirements.txt --no-deps  --no-binary :all:
-        mkdir xdsl
-        tar -xvf xdsl-*.tar.gz -C xdsl --strip-components=1
-        rm xdsl-*.tar.gz
+        XDSL_COMMIT=$(grep xdsl requirements.txt|grep -o -P '(?<=@).*(?=#)')
+        git clone git@github.com:xdslproject/xdsl.git
+        cd xdsl
+        git checkout $XDSL_COMMIT
 
     - name: Install dependencies
       run: |
