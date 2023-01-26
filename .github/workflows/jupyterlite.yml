@@ -67,10 +67,11 @@ jobs:
         rm packages/xdsl packages/frozenlist -rf
         pyodide skeleton pypi xdsl
         pyodide skeleton pypi frozenlist
+        pyodide skeleton pypi riscemu
         
         ../.github/workflows/update_xdsl_pyodide_build.py packages/xdsl/meta.yaml ../xdsl
         
-        PYODIDE_PACKAGES="frozenlist,coverage,xdsl" make
+        PYODIDE_PACKAGES="frozenlist,coverage,xdsl,riscemu" make
 
     - name: Cache Pyodide tree
       uses: actions/cache/save@v3

@@ -1,1 +1,2 @@
 xdsl -e git+https://github.com/xdslproject/xdsl.git@d06ebfdf525b8d8f9d995880d931666bf4efc563#egg={xdsl}
+riscemu
