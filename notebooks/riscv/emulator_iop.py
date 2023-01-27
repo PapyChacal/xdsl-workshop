@@ -72,7 +72,7 @@ def run_riscv(code: str, extensions: List[Type[InstructionSet]] = [], unlimited_
         unlimited_registers=unlimited_regs,
     )
 
-    cpu = UserModeCPU((RV32I, RV32M) + extensions, cfg)
+    cpu = UserModeCPU((RV32I, RV32M, *extensions), cfg)
 
     io = StringIO(code)
 
