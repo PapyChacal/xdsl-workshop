@@ -75,6 +75,7 @@ jobs:
           python -m pip install -r requirements.txt
           sudo apt update && sudo apt install f2c
 
+          rm -rf packages/xdsl packages/frozenlist packages/riscemu
 
           pyodide skeleton pypi xdsl
           pyodide skeleton pypi frozenlist
