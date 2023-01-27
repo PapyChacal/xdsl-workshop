@@ -95,7 +95,7 @@ jobs:
       - name: Build the JupyterLite site
         run: |
           mkdir content
-          cp xdsl/docs/* content -r
+          cp notebooks/* content -r
 
           rm -rf pyodide/pyodide
           mkdir pyodide/pyodide
