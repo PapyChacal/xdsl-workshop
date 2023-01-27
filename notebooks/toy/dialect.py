@@ -6,15 +6,23 @@ from __future__ import annotations
 
 from typing import Annotated, List, TypeAlias, Union, Optional, Any, cast
 
-from xdsl.ir import Dialect, SSAValue
-from xdsl.dialects.builtin import (Float64Type, FunctionType, Attribute,
+from xdsl.ir import (Dialect, SSAValue, Attribute, Block, Region, Operation,
+                     OpResult)
+from xdsl.dialects.builtin import (Float64Type, FunctionType,
                                    FlatSymbolRefAttr, TensorType,
                                    UnrankedTensorType, f64,
                                    DenseIntOrFPElementsAttr, AnyTensorType,
                                    StringAttr)
-from xdsl.irdl import (OpAttr, Operand, OptOpAttr, OptOperand, VarOpResult,
-                       VarOperand, irdl_op_definition, AnyAttr, Block, Region,
-                       Operation, OpResult)
+from xdsl.irdl import (
+    OpAttr,
+    Operand,
+    OptOpAttr,
+    OptOperand,
+    VarOpResult,
+    VarOperand,
+    irdl_op_definition,
+    AnyAttr,
+)
 from xdsl.utils.exceptions import VerifyException
 
 TensorTypeF64: TypeAlias = TensorType[Float64Type]
@@ -309,10 +317,8 @@ class TransposeOp(Operation):
                                 cast(TensorType[Any], input_type).element_type)
             output_type = TensorType.from_type_and_list(
                 element_type, list(reversed(input_type.shape.data)))
-        elif isinstance(input_type, UnrankedTensorType):
-            output_type = input_type
         else:
-            assert False, f'{input_type}: {type(input_type)}'
+            output_type = input_type
 
         return TransposeOp.create(operands=[input], result_types=[output_type])
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from xdsl.dialects.builtin import Float64Type, ModuleOp
+from xdsl.dialects.builtin import Float64Type, ModuleOp, UnrankedTensorType
 from xdsl.ir import BlockArgument, MLContext, Operation
 
 from ..parser import Parser
@@ -9,7 +9,8 @@ from ..toy_ast import (ModuleAST, FunctionAST, PrototypeAST, VariableExprAST,
                        VarDeclExprAST, VarType, LiteralExprAST, NumberExprAST)
 from ..location import Location
 from ..mlir_gen import MLIRGen
-from ..dialect import *
+from ..dialect import (ConstantOp, FuncOp, GenericCallOp, MulOp, ReturnOp,
+                       ReshapeOp, TransposeOp)
 
 
 def test_parse_ast():
@@ -108,7 +109,7 @@ def test_convert_ast():
 
     unrankedF64TensorType = UnrankedTensorType.from_type(Float64Type())
 
-    def func_body(*args: BlockArgument) -> List[Operation]:
+    def func_body(*args: BlockArgument) -> list[Operation]:
         arg0, arg1 = args
         f0 = TransposeOp.from_input(arg0)
         f1 = TransposeOp.from_input(arg1)
@@ -116,7 +117,7 @@ def test_convert_ast():
         f3 = ReturnOp.from_input(f2.results[0])
         return [f0, f1, f2, f3]
 
-    def main_body(*args: BlockArgument) -> List[Operation]:
+    def main_body(*args: BlockArgument) -> list[Operation]:
         m0 = ConstantOp.from_list([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [2, 3])
         [a] = m0.results
         m1 = ConstantOp.from_list([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [6])
