@@ -7,7 +7,6 @@ from xdsl.dialects.builtin import StringAttr, IntegerAttr
 from dataclasses import dataclass, field
 from typing import Type, Dict, Union, Optional, Any, List
 
-
 from typing import Union, TypeVar, Type
 
 from xdsl.ir import Operation, Data, MLContext, Dialect
@@ -15,7 +14,6 @@ from xdsl.irdl import irdl_op_definition, irdl_attr_definition, builder, AnyOf, 
 from xdsl.parser import Parser
 from xdsl.printer import Printer
 from xdsl.dialects.builtin import StringAttr, IntegerAttr
-
 
 
 @dataclass(frozen=True)
@@ -133,8 +131,6 @@ class LabelAttr(Data[str]):
 Op = TypeVar("Op", bound=Operation)
 
 
-
-
 @irdl_attr_definition
 class RegisterType(ParametrizedAttribute):
     name = "riscv_ssa.reg"
@@ -142,9 +138,9 @@ class RegisterType(ParametrizedAttribute):
 
 class Riscv1Rd1Rs1ImmOperation(Operation):
     rd: Annotated[OpResult, RegisterType]
-    rs1 : Annotated[Operand, RegisterType]
-    immediate : OpAttr[IntegerAttr]
-    comment : OptOpAttr[StringAttr]
+    rs1: Annotated[Operand, RegisterType]
+    immediate: OpAttr[IntegerAttr]
+    comment: OptOpAttr[StringAttr]
 
     @classmethod
     def get(cls: Type[Op],
@@ -165,10 +161,10 @@ class Riscv1Rd1Rs1ImmOperation(Operation):
 
 
 class Riscv2Rs1ImmOperation(Operation):
-    rs1 : Annotated[Operand, RegisterType]
-    rs2 : Annotated[Operand, RegisterType]
-    immediate : OpAttr[IntegerAttr]
-    comment : OptOpAttr[StringAttr]
+    rs1: Annotated[Operand, RegisterType]
+    rs2: Annotated[Operand, RegisterType]
+    immediate: OpAttr[IntegerAttr]
+    comment: OptOpAttr[StringAttr]
 
     @classmethod
     def get(cls: Type[Op],
@@ -188,10 +184,10 @@ class Riscv2Rs1ImmOperation(Operation):
 
 
 class Riscv2Rs1OffOperation(Operation):
-    rs1 : Annotated[Operand, RegisterType]
-    rs2 : Annotated[Operand, RegisterType]
-    offset : OpAttr[AnyOf([IntegerAttr, LabelAttr])]
-    comment : OptOpAttr[StringAttr]
+    rs1: Annotated[Operand, RegisterType]
+    rs2: Annotated[Operand, RegisterType]
+    offset: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    comment: OptOpAttr[StringAttr]
 
     @classmethod
     def get(cls: Type[Op],
@@ -213,10 +209,10 @@ class Riscv2Rs1OffOperation(Operation):
 
 
 class Riscv1Rd2RsOperation(Operation):
-    rd : Annotated[OpResult, RegisterType]
-    rs1 : Annotated[Operand, RegisterType]
-    rs2 : Annotated[Operand, RegisterType]
-    comment : OptOpAttr[StringAttr]
+    rd: Annotated[OpResult, RegisterType]
+    rs1: Annotated[Operand, RegisterType]
+    rs2: Annotated[Operand, RegisterType]
+    comment: OptOpAttr[StringAttr]
 
     @classmethod
     def get(cls: Type[Op],
@@ -233,10 +229,10 @@ class Riscv1Rd2RsOperation(Operation):
 
 
 class Riscv1Rs1Rt1OffOperation(Operation):
-    rs : Annotated[OpResult, RegisterType]
-    rt : Annotated[Operand, RegisterType]
-    offset : OpAttr[IntegerAttr]
-    comment : OptOpAttr[StringAttr]
+    rs: Annotated[OpResult, RegisterType]
+    rt: Annotated[Operand, RegisterType]
+    offset: OpAttr[IntegerAttr]
+    comment: OptOpAttr[StringAttr]
 
     @classmethod
     def get(cls: Type[Op],
@@ -255,8 +251,8 @@ class Riscv1Rs1Rt1OffOperation(Operation):
 
 
 class Riscv1OffOperation(Operation):
-    offset : OpAttr[AnyOf([IntegerAttr, LabelAttr])]
-    comment : OptOpAttr[StringAttr]
+    offset: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    comment: OptOpAttr[StringAttr]
 
     @classmethod
     def get(cls: Type[Op],
@@ -276,9 +272,9 @@ class Riscv1OffOperation(Operation):
 
 
 class Riscv1Rd1ImmOperation(Operation):
-    rd : Annotated[OpResult, RegisterType]
-    immediate : OpAttr[AnyOf([IntegerAttr, LabelAttr])]
-    comment : OptOpAttr[StringAttr]
+    rd: Annotated[OpResult, RegisterType]
+    immediate: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    comment: OptOpAttr[StringAttr]
 
     @classmethod
     def get(cls: Type[Op],
@@ -296,9 +292,9 @@ class Riscv1Rd1ImmOperation(Operation):
 
 
 class Riscv1Rd1OffOperation(Operation):
-    rd : Annotated[OpResult, RegisterType]
-    offset : OpAttr[IntegerAttr]
-    comment : OptOpAttr[StringAttr]
+    rd: Annotated[OpResult, RegisterType]
+    offset: OpAttr[IntegerAttr]
+    comment: OptOpAttr[StringAttr]
 
     @classmethod
     def get(cls: Type[Op],
@@ -316,9 +312,9 @@ class Riscv1Rd1OffOperation(Operation):
 
 
 class Riscv1Rs1OffOperation(Operation):
-    rs : Annotated[Operand, RegisterType]
-    offset : OpAttr[IntegerAttr]
-    comment : OptOpAttr[StringAttr]
+    rs: Annotated[Operand, RegisterType]
+    offset: OpAttr[IntegerAttr]
+    comment: OptOpAttr[StringAttr]
 
     @classmethod
     def get(cls: Type[Op],
@@ -337,9 +333,9 @@ class Riscv1Rs1OffOperation(Operation):
 
 
 class Riscv1Rd1RsOperation(Operation):
-    rd : Annotated[OpResult, RegisterType]
-    rs : Annotated[Operand, RegisterType]
-    comment : OptOpAttr[StringAttr]
+    rd: Annotated[OpResult, RegisterType]
+    rs: Annotated[Operand, RegisterType]
+    comment: OptOpAttr[StringAttr]
 
     @classmethod
     def get(cls: Type[Op],
@@ -355,11 +351,10 @@ class Riscv1Rd1RsOperation(Operation):
 
 
 class RiscvNoParamsOperation(Operation):
-    comment : OptOpAttr[StringAttr]
+    comment: OptOpAttr[StringAttr]
 
     @classmethod
-    def get(cls: Type[Op],
-            comment: Optional[str] = None) -> Op:
+    def get(cls: Type[Op], comment: Optional[str] = None) -> Op:
 
         attributes: Dict[str, Any] = {}
         if comment:
@@ -589,16 +584,15 @@ class JALROp(Riscv1Rd1Rs1ImmOperation):
 @irdl_op_definition
 class ECALLOp(Operation):
     name = "riscv_ssa.ecall"
-    args : Annotated[VarOperand, RegisterType]
-    syscall_num : OpAttr[IntegerAttr]
+    args: Annotated[VarOperand, RegisterType]
+    syscall_num: OpAttr[IntegerAttr]
 
     @classmethod
     def get(cls, num: int | IntegerAttr, *args):
         if isinstance(num, int):
             num = IntegerAttr.from_int_and_width(num, 32)
-        return cls.build(operands=[list(args)], attributes={
-            'syscall_num': num
-        })
+        return cls.build(operands=[list(args)],
+                         attributes={'syscall_num': num})
 
     def verify(self):
         assert len(self.args) < 7
@@ -656,7 +650,7 @@ class REMUOp(Riscv1Rd2RsOperation):
 class CallOp(Operation):
     name = "riscv_ssa.call"
     args = VarOperandDef(RegisterType())
-    func_name : OpAttr[StringAttr]
+    func_name: OpAttr[StringAttr]
     result = OptResultDef(RegisterType())
 
     @classmethod
@@ -664,8 +658,7 @@ class CallOp(Operation):
             func_name: Union[str, StringAttr],
             args: List[Union[Operation, SSAValue]],
             has_result: bool = True,
-            comment: Optional[Union[str,
-                                    StringAttr]] = None) -> Op:
+            comment: Optional[Union[str, StringAttr]] = None) -> Op:
         attributes: Dict[str, Any] = {"func_name": func_name}
         if comment is not None:
             attributes["comment"] = StringAttr.build(comment)
@@ -678,7 +671,7 @@ class CallOp(Operation):
 @irdl_op_definition
 class LabelOp(Operation):
     name = "riscv_ssa.label"
-    label : OpAttr[LabelAttr]
+    label: OpAttr[LabelAttr]
 
     @classmethod
     def get(cls: Type[Op],
@@ -695,14 +688,14 @@ class LabelOp(Operation):
 @irdl_op_definition
 class DirectiveOp(Operation):
     name = "riscv_ssa.directive"
-    directive : OpAttr[StringAttr]
-    value : OpAttr[StringAttr]
+    directive: OpAttr[StringAttr]
+    value: OpAttr[StringAttr]
 
 
 @irdl_op_definition
 class AllocOp(Operation):
     name = "riscv_ssa.alloc"
-    rd : Annotated[OpResult, RegisterType]
+    rd: Annotated[OpResult, RegisterType]
 
     @classmethod
     def get(cls: Type[Op]) -> Op:
@@ -713,7 +706,7 @@ class AllocOp(Operation):
 class FuncOp(Operation):
     name = "riscv_ssa.func"
 
-    func_name : OpAttr[StringAttr]
+    func_name: OpAttr[StringAttr]
     func_body = SingleBlockRegionDef()
 
 
@@ -723,10 +716,8 @@ class ReturnOp(Operation):
     value = OptOperandDef(RegisterType())
 
     @classmethod
-    def get(
-        cls: Type[Op],
-        value: Optional[Union[Operation,
-                              SSAValue]] = None) -> Op:
+    def get(cls: Type[Op],
+            value: Optional[Union[Operation, SSAValue]] = None) -> Op:
         operands = []
 
         if value != None:
