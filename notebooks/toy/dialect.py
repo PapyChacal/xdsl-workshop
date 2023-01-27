@@ -8,9 +8,9 @@ from typing import Annotated, List, TypeAlias, Union, Optional, Any, cast
 
 from xdsl.ir import (Dialect, SSAValue, Attribute, Block, Region, Operation,
                      OpResult)
-from xdsl.dialects.builtin import (Float64Type, FunctionType,
+from xdsl.dialects.builtin import (IntegerType, FunctionType,
                                    FlatSymbolRefAttr, TensorType,
-                                   UnrankedTensorType, f64,
+                                   UnrankedTensorType, i32,
                                    DenseIntOrFPElementsAttr, AnyTensorType,
                                    StringAttr)
 from xdsl.irdl import (
@@ -25,9 +25,9 @@ from xdsl.irdl import (
 )
 from xdsl.utils.exceptions import VerifyException
 
-TensorTypeF64: TypeAlias = TensorType[Float64Type]
-UnrankedTensorTypeF64: TypeAlias = UnrankedTensorType[Float64Type]
-AnyTensorTypeF64: TypeAlias = TensorTypeF64 | UnrankedTensorTypeF64
+TensorTypei32: TypeAlias = TensorType[IntegerType]
+UnrankedTensorTypei32: TypeAlias = UnrankedTensorType[IntegerType]
+AnyTensorTypei32: TypeAlias = TensorTypei32 | UnrankedTensorTypei32
 
 
 @irdl_op_definition
@@ -37,17 +37,17 @@ class ConstantOp(Operation):
     to the operation as an attribute. For example:
 
     ```mlir
-      %0 = toy.constant dense<[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]>
-                        : tensor<2x3xf64>
+      %0 = toy.constant dense<[[1, 2, 3], [4, 5, 6]]>
+                        : tensor<2x3xi32>
     ```
     """
     name: str = "toy.constant"
     value: OpAttr[DenseIntOrFPElementsAttr]
-    res: Annotated[OpResult, TensorTypeF64]
+    res: Annotated[OpResult, TensorTypei32]
 
     @staticmethod
-    def from_list(data: List[float], shape: List[int]):
-        value = DenseIntOrFPElementsAttr.tensor_from_list(data, f64, shape)
+    def from_list(data: List[int], shape: List[int]):
+        value = DenseIntOrFPElementsAttr.tensor_from_list(data, i32, shape)
 
         return ConstantOp.create(result_types=[value.type],
                                  attributes={"value": value})
@@ -66,13 +66,13 @@ class AddOp(Operation):
     The shapes of the tensor operands are expected to match.
     """
     name: str = 'toy.add'
-    arguments: Annotated[VarOperand, AnyTensorTypeF64]
-    res: Annotated[OpResult, AnyTensorTypeF64]
+    arguments: Annotated[VarOperand, AnyTensorTypei32]
+    res: Annotated[OpResult, AnyTensorTypei32]
 
     @classmethod
     def from_summands(cls: type[AddOp], lhs: SSAValue, rhs: SSAValue) -> AddOp:
         assert isinstance(lhs.typ, TensorType | UnrankedTensorType)
-        element_type = cast(Float64Type,
+        element_type = cast(IntegerType,
                             cast(TensorType[Any], lhs.typ).element_type)
         return cls.create(result_types=[element_type], operands=[lhs, rhs])
 
@@ -102,9 +102,9 @@ class FuncOp(Operation):
 
     ```mlir
     toy.func @main() {
-      %0 = toy.constant dense<5.500000e+00> : tensor<f64>
-      %1 = toy.reshape(%0 : tensor<f64>) to tensor<2x2xf64>
-      toy.print %1 : tensor<2x2xf64>
+      %0 = toy.constant dense<5.500000e+00> : tensor<i32>
+      %1 = toy.reshape(%0 : tensor<i32>) to tensor<2x2xi32>
+      toy.print %1 : tensor<2x2xi32>
       toy.return
     }
     ```
@@ -186,7 +186,7 @@ class GenericCallOp(Operation):
     callee: OpAttr[FlatSymbolRefAttr]
 
     # Note: naming this results triggers an ArgumentError
-    res: Annotated[VarOpResult, AnyTensorTypeF64]
+    res: Annotated[VarOpResult, AnyTensorTypei32]
 
     @classmethod
     def get(cls: type[GenericCallOp], callee: Union[str, FlatSymbolRefAttr],
@@ -207,8 +207,8 @@ class MulOp(Operation):
     tensors. The shapes of the tensor operands are expected to match.
     """
     name: str = 'toy.mul'
-    arguments: Annotated[VarOperand, AnyTensorTypeF64]
-    res: Annotated[OpResult, AnyTensorTypeF64]
+    arguments: Annotated[VarOperand, AnyTensorTypei32]
+    res: Annotated[OpResult, AnyTensorTypei32]
 
     @classmethod
     def from_summands(cls: type[MulOp], lhs: SSAValue, rhs: SSAValue) -> MulOp:
@@ -253,14 +253,14 @@ class ReturnOp(Operation):
     the operation. For example:
 
     ```mlir
-      func @foo() -> tensor<2xf64> {
+      func @foo() -> tensor<2xi32> {
         ...
-        toy.return %0 : tensor<2xf64>
+        toy.return %0 : tensor<2xi32>
       }
     ```
     """
     name: str = 'toy.return'
-    input: Annotated[OptOperand, AnyTensorTypeF64]
+    input: Annotated[OptOperand, AnyTensorTypei32]
 
     @classmethod
     def from_input(cls: type[ReturnOp],
@@ -275,19 +275,19 @@ class ReshapeOp(Operation):
     the same number of elements but different shapes. For example:
 
     ```mlir
-       %0 = toy.reshape (%arg1 : tensor<10xf64>) to tensor<5x2xf64>
+       %0 = toy.reshape (%arg1 : tensor<10xi32>) to tensor<5x2xi32>
     ```
     """
     name: str = 'toy.reshape'
-    arguments: Annotated[VarOperand, AnyTensorTypeF64]
+    arguments: Annotated[VarOperand, AnyTensorTypei32]
     # We expect that the reshape operation returns a statically shaped tensor.
-    res: Annotated[OpResult, TensorTypeF64]
+    res: Annotated[OpResult, TensorTypei32]
 
     @classmethod
     def from_input(cls: type[ReshapeOp], input: SSAValue,
                    shape: List[int]) -> ReshapeOp:
         assert isinstance(input.typ, TensorType | UnrankedTensorType)
-        element_type = cast(Float64Type,
+        element_type = cast(IntegerType,
                             cast(TensorType[Any], input.typ).element_type)
         t = AnyTensorType.from_type_and_list(element_type, shape)
         return cls.create(result_types=[t], operands=[input])
@@ -295,7 +295,7 @@ class ReshapeOp(Operation):
     def verify_(self):
         result_type = self.res.typ
         assert isinstance(result_type, TensorType)
-        result_type = cast(TensorTypeF64, result_type)
+        result_type = cast(TensorTypei32, result_type)
         if not len(result_type.shape.data):
             raise VerifyException(
                 'Reshape operation result shape should be defined')
@@ -304,8 +304,8 @@ class ReshapeOp(Operation):
 @irdl_op_definition
 class TransposeOp(Operation):
     name: str = 'toy.transpose'
-    arguments: Annotated[Operand, AnyTensorTypeF64]
-    res: Annotated[OpResult, AnyTensorTypeF64]
+    arguments: Annotated[Operand, AnyTensorTypei32]
+    res: Annotated[OpResult, AnyTensorTypei32]
 
     @staticmethod
     def from_input(input: SSAValue):
@@ -313,7 +313,7 @@ class TransposeOp(Operation):
         assert isinstance(input_type, TensorType | UnrankedTensorType)
         output_type: TensorType[Any] | UnrankedTensorType[Any]
         if isinstance(input_type, TensorType):
-            element_type = cast(Float64Type,
+            element_type = cast(IntegerType,
                                 cast(TensorType[Any], input_type).element_type)
             output_type = TensorType.from_type_and_list(
                 element_type, list(reversed(input_type.shape.data)))

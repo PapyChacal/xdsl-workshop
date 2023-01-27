@@ -1,14 +1,20 @@
 from __future__ import annotations
 
-from dataclasses import field
+from dataclasses import field, dataclass
+from typing import Iterable
 
-from xdsl.ir import MLContext
-from xdsl.dialects.builtin import ModuleOp
+from xdsl.ir import MLContext, SSAValue, Operation, Block, Region
+from xdsl.dialects.builtin import ModuleOp, i32, TensorType, UnrankedTensorType
 
-from toy.toy_ast import *
-from toy.dialect import *
+from toy.location import Location
+from toy.toy_ast import (LiteralExprAST, ModuleAST, NumberExprAST, PrototypeAST, VariableExprAST, VarDeclExprAST, ReturnExprAST, PrintExprAST, FunctionAST, ExprAST, CallExprAST, BinaryExprAST)
 
-class MLIRGenError(Exception): pass
+
+
+from toy.dialect import (TensorTypei32, UnrankedTensorTypei32, AddOp, MulOp, FuncOp, FunctionType, ReturnOp, ConstantOp, GenericCallOp, TransposeOp, ReshapeOp, PrintOp)
+
+class MLIRGenError(Exception):
+    pass
 
 @dataclass
 class OpBuilder:
@@ -105,13 +111,13 @@ class MLIRGen:
         self.symbol_table[var] = value
         return True
 
-    def get_type(self, shape: list[int]) -> TensorTypeF64 | UnrankedTensorTypeF64:
+    def get_type(self, shape: list[int]) -> TensorTypei32 | UnrankedTensorTypei32:
         'Build a tensor type from a list of shape dimensions.'
         # If the shape is empty, then this type is unranked.
         if len(shape):
-            return TensorType.from_type_and_list(f64, type)
+            return TensorType.from_type_and_list(i32, type)
         else:
-            return UnrankedTensorTypeF64.from_type(f64)
+            return UnrankedTensorTypei32.from_type(i32)
 
     def mlir_gen_proto(self, proto_ast: PrototypeAST) -> FuncOp:
         """
@@ -133,7 +139,7 @@ class MLIRGen:
         proto_args = function_ast.proto.args
         
         # Create the MLIR block for the current function
-        self.block = Block.from_arg_types([UnrankedTensorType.from_type(f64) for _ in range(len(proto_args))])
+        self.block = Block.from_arg_types([UnrankedTensorType.from_type(i32) for _ in range(len(proto_args))])
 
         # Declare all the function arguments in the symbol table.
         for name, value in zip(proto_args, self.block.args):
@@ -250,13 +256,13 @@ class MLIRGen:
         Example, the source level statement:
         var a<2, 3> = [[1, 2, 3], [4, 5, 6]];
         will be converted to:
-        %0 = "toy.constant"() {value: dense<tensor<2x3xf64>,
+        %0 = "toy.constant"() {value: dense<tensor<2x3xi32>,
             [[1.000000e+00, 2.000000e+00, 3.000000e+00],
-            [4.000000e+00, 5.000000e+00, 6.000000e+00]]>} : () -> tensor<2x3xf64>
+            [4.000000e+00, 5.000000e+00, 6.000000e+00]]>} : () -> tensor<2x3xi32>
         """
         assert self.block is not None
 
-        # The attribute is a vector with a floating point value per element
+        # The attribute is a vector with a integer value per element
         # (number) in the array, see `collectData()` below for more details.
         data = self.collect_data(lit)
 
@@ -266,7 +272,7 @@ class MLIRGen:
         self.block.add_op(op)
         return op.res
 
-    def collect_data(self, expr: ExprAST) -> list[float]:
+    def collect_data(self, expr: ExprAST) -> list[int]:
         """
         Helper function to accumulate the data that compose an array
         literal. It flattens the nested structure in the supplied vector. For
@@ -315,7 +321,7 @@ class MLIRGen:
         # Otherwise this is a call to a user-defined function. Calls to
         # user-defined functions are mapped to a custom call that takes the callee
         # name as an attribute.
-        op = GenericCallOp.get(callee, operands, [UnrankedTensorTypeF64.from_type(f64)])
+        op = GenericCallOp.get(callee, operands, [UnrankedTensorTypei32.from_type(i32)])
         self.block.add_op(op)
         return op.res[0]
 
