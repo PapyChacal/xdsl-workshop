@@ -1,6 +1,5 @@
 from riscemu import RunConfig, UserModeCPU, RV32I, RV32M, AssemblyFileLoader
-from riscemu.instructions import InstructionSet
-from riscemu.types import Instruction
+from riscemu.instructions import InstructionSet, Instruction
 
 from io import StringIO
 from typing import List, Type
@@ -10,7 +9,7 @@ from .riscv_ssa import *
 SCALL_EXIT = 93
 
 
-class SSAVALNamer:
+class _SSAVALNamer:
 
     ssa_val_names = {}
     idx = 0
@@ -29,7 +28,7 @@ class SSAVALNamer:
 
 def print_riscv_ssa(module: ModuleOp):
     out = ".text\n"
-    reg = SSAVALNamer()
+    reg = _SSAVALNamer()
 
     def get_all_regs(op):
         for name in ('rd', 'rs', 'rt', 'rs1', 'rs2', 'rs3', 'offset',
@@ -65,18 +64,22 @@ def print_riscv_ssa(module: ModuleOp):
     return out
 
 
-def run_riscv(code: str, ins: List[Type[InstructionSet]], unlimited_regs=True):
+def run_riscv(code: str, extensions: List[Type[InstructionSet]] = [], unlimited_regs=False):
     cfg = RunConfig(
         debug_instruction=False,
         verbosity=5,
         debug_on_exception=False,
         unlimited_registers=unlimited_regs,
     )
-    cpu = UserModeCPU((RV32I, RV32M) + ins, cfg)
+
+    cpu = UserModeCPU((RV32I, RV32M) + extensions, cfg)
 
     io = StringIO(code)
 
     loader = AssemblyFileLoader.instantiate('example.asm', [])
     cpu.load_program(loader.parse_io(io))
 
-    cpu.launch(cpu.mmu.programs[-1], True)
+    try:
+        cpu.launch(cpu.mmu.programs[-1], True)
+    except Exception as ex:
+        print(ex)
