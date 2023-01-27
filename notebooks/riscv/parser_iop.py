@@ -1,10 +1,11 @@
 from riscemu import RunConfig, UserModeCPU, RV32I, RV32M, AssemblyFileLoader
-from riscemu.instructions import InstructionSet, Instruction
+from riscemu.instructions import InstructionSet
+from riscemu.types import Instruction
 
 from io import StringIO
 from typing import List, Type
 from xdsl.dialects.builtin import ModuleOp
-from riscv_ssa import *
+from .riscv_ssa import *
 
 SCALL_EXIT = 93
 
@@ -34,6 +35,8 @@ def print_riscv_ssa(module: ModuleOp):
                 val = getattr(op, name)
                 if isinstance(val, SSAValue):
                     yield reg.get_ssa_name(val)
+                elif isinstance(val, LabelAttr):
+                    yield val.data
                 elif isinstance(val, IntegerAttr):
                     yield str(val.value.data)
                 else:
