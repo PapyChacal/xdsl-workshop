@@ -109,14 +109,14 @@ class ReturnExprAST(ExprAST):
 @dataclass
 class NumberExprAST(ExprAST):
     'Expression class for numeric literals like "1.0".'
-    val: float
+    val: int
 
     @property
     def kind(self):
         return ExprASTKind.Expr_Num
 
     def inner_dump(self, prefix: str, dumper: Dumper):
-        dumper.append(prefix, ' {:.6e}'.format(self.val))
+        dumper.append(prefix, f' {self.val}')
 
 
 @dataclass
@@ -139,14 +139,14 @@ class LiteralExprAST(ExprAST):
     def inner_dump(self, prefix: str, dumper: Dumper):
         dumper.append('Literal:', self.__dump() + f' {self.loc}')
 
-    def iter_flattened_values(self) -> Generator[float, None, None]:
+    def iter_flattened_values(self) -> Generator[int, None, None]:
         for value in self.values:
             if isinstance(value, NumberExprAST):
                 yield value.val
             else:
                 yield from value.iter_flattened_values()
 
-    def flattened_values(self) -> list[float]:
+    def flattened_values(self) -> list[int]:
         return list(self.iter_flattened_values())
 
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from xdsl.dialects.builtin import Float64Type, ModuleOp, UnrankedTensorType
+from xdsl.dialects.builtin import i32, ModuleOp, UnrankedTensorType
 from xdsl.ir import BlockArgument, MLContext, Operation
 
 from ..parser import Parser
@@ -43,25 +43,25 @@ def test_parse_ast():
                 loc(11, 3), 'a', VarType([]),
                 LiteralExprAST(loc(11, 11), [
                     LiteralExprAST(loc(11, 12), [
-                        NumberExprAST(loc(11, 13), 1.0),
-                        NumberExprAST(loc(11, 16), 2.0),
-                        NumberExprAST(loc(11, 19), 3.0)
+                        NumberExprAST(loc(11, 13), 1),
+                        NumberExprAST(loc(11, 16), 2),
+                        NumberExprAST(loc(11, 19), 3)
                     ], [3]),
                     LiteralExprAST(loc(11, 23), [
-                        NumberExprAST(loc(11, 24), 4.0),
-                        NumberExprAST(loc(11, 27), 5.0),
-                        NumberExprAST(loc(11, 30), 6.0),
+                        NumberExprAST(loc(11, 24), 4),
+                        NumberExprAST(loc(11, 27), 5),
+                        NumberExprAST(loc(11, 30), 6),
                     ], [3])
                 ], [2, 3])),
             VarDeclExprAST(
                 loc(15, 3), 'b', VarType([2, 3]),
                 LiteralExprAST(loc(15, 17), [
-                    NumberExprAST(loc(15, 18), 1.0),
-                    NumberExprAST(loc(15, 21), 2.0),
-                    NumberExprAST(loc(15, 24), 3.0),
-                    NumberExprAST(loc(15, 27), 4.0),
-                    NumberExprAST(loc(15, 30), 5.0),
-                    NumberExprAST(loc(15, 33), 6.0),
+                    NumberExprAST(loc(15, 18), 1),
+                    NumberExprAST(loc(15, 21), 2),
+                    NumberExprAST(loc(15, 24), 3),
+                    NumberExprAST(loc(15, 27), 4),
+                    NumberExprAST(loc(15, 30), 5),
+                    NumberExprAST(loc(15, 33), 6),
                 ], [6])),
             VarDeclExprAST(
                 loc(19, 3), 'c', VarType([]),
@@ -107,7 +107,7 @@ def test_convert_ast():
 
     generated_module_op = mlir_gen.mlir_gen_module(module_ast)
 
-    unrankedF64TensorType = UnrankedTensorType.from_type(Float64Type())
+    unrankedi32TensorType = UnrankedTensorType.from_type(i32)
 
     def func_body(*args: BlockArgument) -> list[Operation]:
         arg0, arg1 = args
@@ -118,28 +118,28 @@ def test_convert_ast():
         return [f0, f1, f2, f3]
 
     def main_body(*args: BlockArgument) -> list[Operation]:
-        m0 = ConstantOp.from_list([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [2, 3])
+        m0 = ConstantOp.from_list([1, 2, 3, 4, 5, 6], [2, 3])
         [a] = m0.results
-        m1 = ConstantOp.from_list([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [6])
+        m1 = ConstantOp.from_list([1, 2, 3, 4, 5, 6], [6])
         m2 = ReshapeOp.from_input(m1.results[0], [2, 3])
         [b] = m2.results
         m3 = GenericCallOp.get('multiply_transpose', [a, b],
-                               [unrankedF64TensorType])
+                               [unrankedi32TensorType])
         [c] = m3.results
         m4 = GenericCallOp.get('multiply_transpose', [b, a],
-                               [unrankedF64TensorType])
+                               [unrankedi32TensorType])
         m5 = GenericCallOp.get('multiply_transpose', [b, c],
-                               [unrankedF64TensorType])
+                               [unrankedi32TensorType])
         m6 = TransposeOp.from_input(a)
         [a_transposed] = m6.results
         m7 = GenericCallOp.get('multiply_transpose', [a_transposed, c],
-                               [unrankedF64TensorType])
+                               [unrankedi32TensorType])
         m8 = ReturnOp.from_input()
         return [m0, m1, m2, m3, m4, m5, m6, m7, m8]
 
     multiply_transpose = FuncOp.from_callable(
-        'multiply_transpose', [unrankedF64TensorType, unrankedF64TensorType],
-        [unrankedF64TensorType],
+        'multiply_transpose', [unrankedi32TensorType, unrankedi32TensorType],
+        [unrankedi32TensorType],
         func_body,
         private=True)
     main = FuncOp.from_callable('main', [], [], main_body, private=False)

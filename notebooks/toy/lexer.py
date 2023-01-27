@@ -36,7 +36,7 @@ class IdentifierToken(Token):
 
 @dataclass
 class NumberToken(Token):
-    value: float
+    value: int
 
 
 @dataclass
@@ -78,7 +78,7 @@ def tokenize(file: Path, program: str | None = None):
         true_col = col - n
 
         if text[0].isnumeric():
-            value = float(text)
+            value = int(text)
             tokens.append(NumberToken(file, row, true_col, text, value))
         else:
             tokens.append(IdentifierToken(file, row, true_col, text))
