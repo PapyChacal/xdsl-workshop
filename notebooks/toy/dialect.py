@@ -46,7 +46,7 @@ class ConstantOp(Operation):
     res: Annotated[OpResult, TensorTypeI32]
 
     @staticmethod
-    def from_list(data: List[int], shape: List[int]):
+    def from_list(data: List[int], shape: List[int]) -> ConstantOp:
         value = DenseIntOrFPElementsAttr.tensor_from_list(data, i32, shape)
 
         return ConstantOp.create(result_types=[value.type],
