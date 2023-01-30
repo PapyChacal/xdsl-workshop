@@ -726,6 +726,21 @@ class ReturnOp(Operation):
         return cls.build(operands=operands)
 
 
+# debugging instructions:
+
+@irdl_op_definition
+class PrintOp(Operation):
+    name = "riscv_debug.print"
+
+    rs: Annotated[Operand, RegisterType]
+
+    @classmethod
+    def get(cls, reg):
+        return cls.build(
+            operands=[reg]
+        )
+
+
 riscv_ssa_attrs: List[Type[Attribute]] = [RegisterType]
 riscv_ssa_ops: List[Type[Operation]] = [
     LBOp, LBUOp, LHOp, LHUOp, LWOp, SBOp, SHOp, SWOp, BEQOp, BNEOp, BLTOp,

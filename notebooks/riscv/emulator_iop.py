@@ -4,9 +4,16 @@ from riscemu.instructions import InstructionSet, Instruction
 from io import StringIO
 from typing import List, Type
 from xdsl.dialects.builtin import ModuleOp
-from .riscv_ssa import *
+from .riscv_ssa import SSAValue, LabelAttr, IntegerAttr, DirectiveOp, \
+    LabelOp, RiscvNoParamsOperation, ECALLOp
 
 SCALL_EXIT = 93
+
+class RV_Debug(InstructionSet):
+    # this instruction will dissappear into our emualtor soon-ish
+    def instruction_print(self, ins: Instruction):
+        reg = ins.get_reg(0)
+        print("register {} contains value {}".format(reg, self.regs.get(reg)))
 
 
 class _SSAVALNamer:
@@ -45,20 +52,20 @@ def print_riscv_ssa(module: ModuleOp):
                     yield val.data
 
     for op in module.regions[0].ops:
+        name = '.'.join(op.name.split(".")[1:])
         if isinstance(op, DirectiveOp):
             out += "{} {}".format(op.directive.data, op.value.data)
         elif isinstance(op, LabelOp):
             out += "{}:".format(op.label.data)
         elif isinstance(op, RiscvNoParamsOperation):
-            out += "{}".format(op.name.split(".")[-1])
+            out += "{}".format(name)
         elif isinstance(op, ECALLOp):
             for id, arg in enumerate(op.args):
                 out += '\tmv\ta{}, {}\n'.format(id, reg.get_ssa_name(arg))
             out += '\tli\ta7, {}\n'.format(op.syscall_num.value.data)
             out += '\tscall'
         else:
-            out += "\t{}\t{}".format(
-                op.name.split(".")[-1], ", ".join(get_all_regs(op)))
+            out += "\t{}\t{}".format(name, ", ".join(get_all_regs(op)))
 
         out += "\n"
     return out
@@ -72,7 +79,7 @@ def run_riscv(code: str, extensions: List[Type[InstructionSet]] = [], unlimited_
         unlimited_registers=unlimited_regs,
     )
 
-    cpu = UserModeCPU((RV32I, RV32M, *extensions), cfg)
+    cpu = UserModeCPU((RV32I, RV32M,RV_Debug, *extensions), cfg)
 
     io = StringIO(code)
 
