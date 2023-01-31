@@ -64,6 +64,8 @@ def print_riscv_ssa(module: ModuleOp):
                 out += '\tmv\ta{}, {}\n'.format(id, reg.get_ssa_name(arg))
             out += '\tli\ta7, {}\n'.format(op.syscall_num.value.data)
             out += '\tscall'
+            if op.result and len(op.result.uses) > 0:
+                out += '\n\tmv\t{}, a0'.format(reg.get_ssa_name(op.result))
         else:
             out += "\t{}\t{}".format(name, ", ".join(get_all_regs(op)))
 

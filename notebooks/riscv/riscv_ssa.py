@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+
 from dataclasses import dataclass, field
 from typing import Type, Dict, Union, Optional, Any, List, TypeVar, Annotated
 
 from xdsl.ir import (Operation, ParametrizedAttribute, SSAValue, Dialect,
                      Attribute, Data, OpResult)
-from xdsl.irdl import (irdl_op_definition, irdl_attr_definition, OptResultDef,
-                       VarOperand, VarOperandDef, AnyOf, SingleBlockRegionDef,
-                       OptOperandDef, OpAttr, OptOpAttr, builder, Operand)
+
+from xdsl.irdl import (irdl_op_definition, irdl_attr_definition, 
+                       OptOpResult, VarOperand, AnyOf, SingleBlockRegion, 
+                       OpAttr, OptOpAttr, OptOperand, builder, Operand)
 from xdsl.dialects.builtin import StringAttr, IntegerAttr
 
 from xdsl.parser import Parser
@@ -588,13 +590,18 @@ class ECALLOp(Operation):
     name = "riscv_ssa.ecall"
     args: Annotated[VarOperand, RegisterType]
     syscall_num: OpAttr[IntegerAttr]
+    result: Annotated[OptOpResult, RegisterType]
+    """
+    Some syscalls return values by putting them into a0. The result register will represent a0.
+    """
 
     @classmethod
-    def get(cls, num: int | IntegerAttr, *args):
+    def get(cls, num: int | IntegerAttr, has_result: bool = False, *args):
         if isinstance(num, int):
             num = IntegerAttr.from_int_and_width(num, 32)
         return cls.build(operands=[list(args)],
-                         attributes={'syscall_num': num})
+                         attributes={'syscall_num': num},
+                         result_types=[[RegisterType()]] if has_result else [[]])
 
     def verify(self):
         assert len(self.args) < 7
@@ -651,9 +658,9 @@ class REMUOp(Riscv1Rd2RsOperation):
 @irdl_op_definition
 class CallOp(Operation):
     name = "riscv_ssa.call"
-    args = VarOperandDef(RegisterType())
+    args: Annotated[VarOperand, RegisterType]
     func_name: OpAttr[StringAttr]
-    result = OptResultDef(RegisterType())
+    result: Annotated[OptOpResult, RegisterType]
 
     @classmethod
     def get(cls: Type[Op],
@@ -709,13 +716,14 @@ class FuncOp(Operation):
     name = "riscv_ssa.func"
 
     func_name: OpAttr[StringAttr]
-    func_body = SingleBlockRegionDef()
+    func_body: SingleBlockRegion
+
 
 
 @irdl_op_definition
 class ReturnOp(Operation):
     name = "riscv_ssa.return"
-    value = OptOperandDef(RegisterType())
+    value: Annotated[OptOperand, RegisterType]
 
     @classmethod
     def get(cls: Type[Op],
