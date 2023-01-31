@@ -139,16 +139,18 @@ class RegisterType(ParametrizedAttribute):
 class Riscv1Rd1Rs1ImmOperation(Operation):
     rd: Annotated[OpResult, RegisterType]
     rs1: Annotated[Operand, RegisterType]
-    immediate: OpAttr[IntegerAttr]
+    immediate: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
     def get(cls: Type[Op],
             rs1: Union[Operation, SSAValue],
-            immediate: Union[int, IntegerAttr],
+            immediate: Union[int, IntegerAttr, str, LabelAttr],
             comment: Optional[str] = None) -> Op:
         if isinstance(immediate, int):
             immediate = IntegerAttr.from_int_and_width(immediate, 32)
+        elif isinstance(immediate, str):
+            immediate = LabelAttr.from_str(immediate)
 
         attributes: Dict[str, Any] = {
             "immediate": immediate,
@@ -163,17 +165,19 @@ class Riscv1Rd1Rs1ImmOperation(Operation):
 class Riscv2Rs1ImmOperation(Operation):
     rs1: Annotated[Operand, RegisterType]
     rs2: Annotated[Operand, RegisterType]
-    immediate: OpAttr[IntegerAttr]
+    immediate: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
     def get(cls: Type[Op],
             rs1: Union[Operation, SSAValue],
             rs2: Union[Operation, SSAValue],
-            immediate: Union[int, IntegerAttr],
+            immediate: Union[int, IntegerAttr, str, LabelAttr],
             comment: Optional[str] = None) -> Op:
         if isinstance(immediate, int):
             immediate = IntegerAttr.from_int_and_width(immediate, 32)
+        elif isinstance(immediate, str):
+            immediate = LabelAttr.from_str(immediate)
 
         attributes: Dict[str, Any] = {
             "immediate": immediate,
