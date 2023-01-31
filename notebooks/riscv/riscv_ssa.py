@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Type, Dict, Union, Optional, Any, List, TypeVar
+from typing import Type, Dict, Union, Optional, Any, List, TypeVar, Annotated
 
 from xdsl.ir import (Operation, ParametrizedAttribute, SSAValue, Dialect,
                      Attribute, Data, OpResult)
@@ -730,6 +730,7 @@ class ReturnOp(Operation):
 
 # debugging instructions:
 
+
 @irdl_op_definition
 class PrintOp(Operation):
     name = "riscv_debug.print"
@@ -738,9 +739,7 @@ class PrintOp(Operation):
 
     @classmethod
     def get(cls, reg):
-        return cls.build(
-            operands=[reg]
-        )
+        return cls.build(operands=[reg])
 
 
 riscv_ssa_attrs: List[Type[Attribute]] = [RegisterType]
