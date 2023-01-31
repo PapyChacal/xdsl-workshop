@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-from xdsl.ir import Operation, ParametrizedAttribute, SSAValue, Dialect, Attribute, Data
-from xdsl.irdl import irdl_op_definition, irdl_attr_definition, ResultDef, OptResultDef, OperandDef, VarOperand, VarOperandDef, AnyOf, SingleBlockRegionDef, OptOperandDef, OpAttr, OptOpAttr
+from dataclasses import dataclass, field
+from typing import Type, Dict, Union, Optional, Any, List, TypeVar
+
+from xdsl.ir import (Operation, ParametrizedAttribute, SSAValue, Dialect,
+                     Attribute, Data, OpResult)
+from xdsl.irdl import (irdl_op_definition, irdl_attr_definition, OptResultDef,
+                       VarOperand, VarOperandDef, AnyOf, SingleBlockRegionDef,
+                       OptOperandDef, OpAttr, OptOpAttr, builder, Operand)
 from xdsl.dialects.builtin import StringAttr, IntegerAttr
 
-from dataclasses import dataclass, field
-from typing import Type, Dict, Union, Optional, Any, List
-
-from typing import Union, TypeVar, Type
-
-from xdsl.ir import Operation, Data, MLContext, Dialect
-from xdsl.irdl import irdl_op_definition, irdl_attr_definition, builder, AnyOf, OpAttr, OptOpAttr, Operand, OpResult, Annotated
 from xdsl.parser import Parser
 from xdsl.printer import Printer
-from xdsl.dialects.builtin import StringAttr, IntegerAttr
 
 
 @dataclass(frozen=True)
