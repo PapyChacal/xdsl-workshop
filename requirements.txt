@@ -1,2 +1,2 @@
-xdsl -e git+https://github.com/xdslproject/xdsl.git@d06ebfdf525b8d8f9d995880d931666bf4efc563#egg={xdsl}
+xdsl -e git+https://github.com/xdslproject/xdsl.git@62cb4d4a0f36db74ce88d2dae5d7eeb76b5d01ed#egg={xdsl}
 riscemu -e git+https://github.com/antonlydike/riscemu.git@b5ebe13528cdfe454438e4da6b3d76a3dda2ed1f#egg={riscemu}
