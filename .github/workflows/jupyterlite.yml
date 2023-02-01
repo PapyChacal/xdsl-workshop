@@ -38,7 +38,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install jupyterlite[all]==0.1.0b17 libarchive-c build pyodide-build
+          python -m pip install jupyterlite[all]==0.1.0b17 libarchive-c build
 
       - name: Build xDSL source distribution
         run: |
@@ -82,7 +82,7 @@ jobs:
           pyodide skeleton pypi riscemu
 
           ../.github/workflows/update_xdsl_pyodide_build.py packages/xdsl/meta.yaml ../xdsl frozenlist
-          ../.github/workflows/update_xdsl_pyodide_build.py packages/riscemu/meta.yaml ../riscemu frozenlist
+          ../.github/workflows/update_xdsl_pyodide_build.py packages/riscemu/meta.yaml ../riscemu
 
           PYODIDE_PACKAGES="frozenlist,coverage,xdsl,riscemu" make
 
