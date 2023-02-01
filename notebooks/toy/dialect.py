@@ -30,8 +30,12 @@ UnrankedTensorTypeI32: TypeAlias = UnrankedTensorType[IntegerType]
 AnyTensorTypeI32: TypeAlias = TensorTypeI32 | UnrankedTensorTypeI32
 
 
+class NoSideEffect:
+    pass
+
+
 @irdl_op_definition
-class ConstantOp(Operation):
+class ConstantOp(Operation, NoSideEffect):
     """
     Constant operation turns a literal into an SSA value. The data is attached
     to the operation as an attribute. For example:
@@ -48,7 +52,10 @@ class ConstantOp(Operation):
     @staticmethod
     def from_list(data: List[int], shape: List[int]) -> ConstantOp:
         value = DenseIntOrFPElementsAttr.tensor_from_list(data, i32, shape)
+        return ConstantOp.from_value(value)
 
+    @staticmethod
+    def from_value(value: DenseIntOrFPElementsAttr) -> ConstantOp:
         return ConstantOp.create(result_types=[value.type],
                                  attributes={"value": value})
 
@@ -60,7 +67,7 @@ class ConstantOp(Operation):
 
 
 @irdl_op_definition
-class AddOp(Operation):
+class AddOp(Operation, NoSideEffect):
     """
     The "add" operation performs element-wise addition between two tensors.
     The shapes of the tensor operands are expected to match.
@@ -201,7 +208,7 @@ class GenericCallOp(Operation):
 
 
 @irdl_op_definition
-class MulOp(Operation):
+class MulOp(Operation, NoSideEffect):
     """
     The "mul" operation performs element-wise multiplication between two
     tensors. The shapes of the tensor operands are expected to match.
@@ -269,7 +276,7 @@ class ReturnOp(Operation):
 
 
 @irdl_op_definition
-class ReshapeOp(Operation):
+class ReshapeOp(Operation, NoSideEffect):
     """
     Reshape operation is transforming its input tensor into a new tensor with
     the same number of elements but different shapes. For example:
@@ -279,18 +286,24 @@ class ReshapeOp(Operation):
     ```
     """
     name: str = 'toy.reshape'
-    arguments: Annotated[VarOperand, AnyTensorTypeI32]
+    arg: Annotated[Operand, AnyTensorTypeI32]
     # We expect that the reshape operation returns a statically shaped tensor.
     res: Annotated[OpResult, TensorTypeI32]
 
     @classmethod
-    def from_input(cls: type[ReshapeOp], input: SSAValue,
+    def from_input(cls: type[ReshapeOp], arg: SSAValue,
                    shape: List[int]) -> ReshapeOp:
-        assert isinstance(input.typ, TensorType | UnrankedTensorType)
+        assert isinstance(arg.typ, TensorType | UnrankedTensorType)
         element_type = cast(IntegerType,
-                            cast(TensorType[Any], input.typ).element_type)
-        t = AnyTensorType.from_type_and_list(element_type, shape)
-        return cls.create(result_types=[t], operands=[input])
+                            cast(TensorType[Any], arg.typ).element_type)
+        t = TensorTypeI32.from_type_and_list(element_type, shape)
+        return cls.from_input_and_type(arg, t)
+
+    @classmethod
+    def from_input_and_type(cls: type[ReshapeOp], arg: SSAValue,
+                            t: TensorTypeI32) -> ReshapeOp:
+        assert isinstance(arg.typ, TensorType | UnrankedTensorType)
+        return cls.create(result_types=[t], operands=[arg])
 
     def verify_(self):
         result_type = self.res.typ
@@ -302,7 +315,7 @@ class ReshapeOp(Operation):
 
 
 @irdl_op_definition
-class TransposeOp(Operation):
+class TransposeOp(Operation, NoSideEffect):
     name: str = 'toy.transpose'
     arguments: Annotated[Operand, AnyTensorTypeI32]
     res: Annotated[OpResult, AnyTensorTypeI32]

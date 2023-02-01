@@ -1,7 +1,11 @@
 from pathlib import Path
+from io import StringIO
 
 from xdsl.dialects.builtin import i32, ModuleOp, UnrankedTensorType
 from xdsl.ir import BlockArgument, MLContext, Operation
+from xdsl.pattern_rewriter import (GreedyRewritePatternApplier,
+                                   PatternRewriteWalker)
+from xdsl.printer import Printer
 
 from ..parser import Parser
 from ..toy_ast import (ModuleAST, FunctionAST, PrototypeAST, VariableExprAST,
@@ -9,8 +13,9 @@ from ..toy_ast import (ModuleAST, FunctionAST, PrototypeAST, VariableExprAST,
                        VarDeclExprAST, VarType, LiteralExprAST, NumberExprAST)
 from ..location import Location
 from ..mlir_gen import MLIRGen
-from ..dialect import (ConstantOp, FuncOp, GenericCallOp, MulOp, ReturnOp,
-                       ReshapeOp, TransposeOp)
+from ..dialect import (ConstantOp, FuncOp, GenericCallOp, MulOp, PrintOp,
+                       ReturnOp, ReshapeOp, TransposeOp)
+from ..rewrites import ReshapeReshapeOptPattern, SimplifyRedundantTranspose, RemoveUnusedOperations, FoldConstantReshapeOptPattern
 
 
 def test_parse_ast():
@@ -147,3 +152,176 @@ def test_convert_ast():
     module_op = ModuleOp.from_region_or_ops([multiply_transpose, main])
 
     assert module_op.is_structurally_equivalent(generated_module_op)
+
+
+def test_rewrite_transposes():
+    example = """
+    def transpose_transpose(x) {
+        return transpose(transpose(x));
+    }
+    """
+
+    ctx = MLContext()
+    mlir_gen = MLIRGen(ctx)
+
+    module_ast = Parser(Path('in_memory'), example).parseModule()
+
+    generated_module_op = mlir_gen.mlir_gen_module(module_ast)
+
+    unrankedi32TensorType = UnrankedTensorType.from_type(i32)
+
+    def func_body_0(*args: BlockArgument) -> list[Operation]:
+        arg0, = args
+        f0 = TransposeOp.from_input(arg0)
+        f1 = TransposeOp.from_input(f0.results[0])
+        f2 = ReturnOp.from_input(f1.results[0])
+        return [f0, f1, f2]
+
+    def func_body_1(*args: BlockArgument) -> list[Operation]:
+        arg0, = args
+        f0 = TransposeOp.from_input(arg0)
+        f1 = ReturnOp.from_input(arg0)
+        return [f0, f1]
+
+    def func_body_2(*args: BlockArgument) -> list[Operation]:
+        arg0, = args
+        f0 = ReturnOp.from_input(arg0)
+        return [f0]
+
+    assert generated_module_op.is_structurally_equivalent(
+        ModuleOp.from_region_or_ops([
+            FuncOp.from_callable('transpose_transpose',
+                                 [unrankedi32TensorType],
+                                 [unrankedi32TensorType],
+                                 func_body_0,
+                                 private=True)
+        ]))
+
+    PatternRewriteWalker(
+        GreedyRewritePatternApplier([SimplifyRedundantTranspose()
+                                     ])).rewrite_module(generated_module_op)
+
+    assert generated_module_op.is_structurally_equivalent(
+        ModuleOp.from_region_or_ops([
+            FuncOp.from_callable('transpose_transpose',
+                                 [unrankedi32TensorType],
+                                 [unrankedi32TensorType],
+                                 func_body_1,
+                                 private=True)
+        ]))
+
+    PatternRewriteWalker(
+        GreedyRewritePatternApplier([RemoveUnusedOperations()
+                                     ])).rewrite_module(generated_module_op)
+
+    assert generated_module_op.is_structurally_equivalent(
+        ModuleOp.from_region_or_ops([
+            FuncOp.from_callable('transpose_transpose',
+                                 [unrankedi32TensorType],
+                                 [unrankedi32TensorType],
+                                 func_body_2,
+                                 private=True)
+        ]))
+
+
+def print_module(module: ModuleOp) -> str:
+    stream = StringIO()
+    Printer(target=Printer.Target.MLIR, stream=stream).print(module)
+    return stream.getvalue()
+
+
+def test_constant_folding():
+    example = """
+    def main() {
+        var a<2,1> = [1, 2];
+        var b<2,1> = a;
+        var c<2,1> = b;
+        print(c);
+    }
+    """
+
+    ctx = MLContext()
+    mlir_gen = MLIRGen(ctx)
+
+    module_ast = Parser(Path('in_memory'), example).parseModule()
+
+    generated_module_op = mlir_gen.mlir_gen_module(module_ast)
+
+    def main_0(*args: BlockArgument) -> list[Operation]:
+        _ = args
+        m0 = ConstantOp.from_list([1, 2], [2])
+        m1 = ReshapeOp.from_input(m0.res, [2, 1])
+        m2 = ReshapeOp.from_input(m1.res, [2, 1])
+        m3 = ReshapeOp.from_input(m2.res, [2, 1])
+        m4 = PrintOp.from_input(m3.res)
+        m5 = ReturnOp.from_input()
+        return [m0, m1, m2, m3, m4, m5]
+
+    def main_1(*args: BlockArgument) -> list[Operation]:
+        _ = args
+        m0 = ConstantOp.from_list([1, 2], [2])
+        m1 = ReshapeOp.from_input(m0.results[0], [2, 1])
+        m2 = ReshapeOp.from_input(m0.results[0], [2, 1])
+        m3 = ReshapeOp.from_input(m0.results[0], [2, 1])
+        m4 = PrintOp.from_input(m3.res)
+        m5 = ReturnOp.from_input()
+        return [m0, m1, m2, m3, m4, m5]
+
+    def main_2(*args: BlockArgument) -> list[Operation]:
+        _ = args
+        m0 = ConstantOp.from_list([1, 2], [2])
+        m1 = ReshapeOp.from_input(m0.res, [2, 1])
+        m2 = PrintOp.from_input(m1.res)
+        m3 = ReturnOp.from_input()
+        return [m0, m1, m2, m3]
+
+    def main_3(*args: BlockArgument) -> list[Operation]:
+        _ = args
+        m0 = ConstantOp.from_list([1, 2], [2])
+        m1 = ConstantOp.from_list([1, 2], [2, 1])
+        m2 = PrintOp.from_input(m1.res)
+        m3 = ReturnOp.from_input()
+        return [m0, m1, m2, m3]
+
+    def main_4(*args: BlockArgument) -> list[Operation]:
+        _ = args
+        m0 = ConstantOp.from_list([1, 2], [2, 1])
+        m1 = PrintOp.from_input(m0.res)
+        m2 = ReturnOp.from_input()
+        return [m0, m1, m2]
+
+    assert generated_module_op.is_structurally_equivalent(
+        ModuleOp.from_region_or_ops(
+            [FuncOp.from_callable('main', [], [], main_0, private=False)]))
+
+    PatternRewriteWalker(
+        GreedyRewritePatternApplier([ReshapeReshapeOptPattern()
+                                     ])).rewrite_module(generated_module_op)
+
+    assert generated_module_op.is_structurally_equivalent(
+        ModuleOp.from_region_or_ops(
+            [FuncOp.from_callable('main', [], [], main_1, private=False)]))
+
+    PatternRewriteWalker(
+        GreedyRewritePatternApplier([RemoveUnusedOperations()
+                                     ])).rewrite_module(generated_module_op)
+
+    assert generated_module_op.is_structurally_equivalent(
+        ModuleOp.from_region_or_ops(
+            [FuncOp.from_callable('main', [], [], main_2, private=False)]))
+
+    PatternRewriteWalker(
+        GreedyRewritePatternApplier([FoldConstantReshapeOptPattern()
+                                     ])).rewrite_module(generated_module_op)
+
+    assert generated_module_op.is_structurally_equivalent(
+        ModuleOp.from_region_or_ops(
+            [FuncOp.from_callable('main', [], [], main_3, private=False)]))
+
+    PatternRewriteWalker(
+        GreedyRewritePatternApplier([RemoveUnusedOperations()
+                                     ])).rewrite_module(generated_module_op)
+
+    assert generated_module_op.is_structurally_equivalent(
+        ModuleOp.from_region_or_ops(
+            [FuncOp.from_callable('main', [], [], main_4, private=False)]))
