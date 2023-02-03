@@ -9,6 +9,7 @@ from .riscv_ssa import SSAValue, LabelAttr, IntegerAttr, DirectiveOp, \
 
 SCALL_EXIT = 93
 
+
 class RV_Debug(InstructionSet):
     # this instruction will dissappear into our emualtor soon-ish
     def instruction_print(self, ins: Instruction):
@@ -34,7 +35,8 @@ class _SSAVALNamer:
 
 
 def print_riscv_ssa(module: ModuleOp):
-    out = ".text\n"
+    out = ""
+    has_region_definitions = False
     reg = _SSAVALNamer()
 
     def get_all_regs(op):
@@ -55,6 +57,8 @@ def print_riscv_ssa(module: ModuleOp):
         name = '.'.join(op.name.split(".")[1:])
         if isinstance(op, DirectiveOp):
             out += "{} {}".format(op.directive.data, op.value.data)
+            if op.directive.data.startswith("."):
+                has_region_definitions = True
         elif isinstance(op, LabelOp):
             out += "{}:".format(op.label.data)
         elif isinstance(op, RiscvNoParamsOperation):
@@ -70,6 +74,8 @@ def print_riscv_ssa(module: ModuleOp):
             out += "\t{}\t{}".format(name, ", ".join(get_all_regs(op)))
 
         out += "\n"
+    if not has_region_definitions:
+        out = ".text\n"+out
     return out
 
 
@@ -81,7 +87,7 @@ def run_riscv(code: str, extensions: List[Type[InstructionSet]] = [], unlimited_
         unlimited_registers=unlimited_regs,
     )
 
-    cpu = UserModeCPU((RV32I, RV32M,RV_Debug, *extensions), cfg)
+    cpu = UserModeCPU((RV32I, RV32M, RV_Debug, *extensions), cfg)
 
     io = StringIO(code)
 
