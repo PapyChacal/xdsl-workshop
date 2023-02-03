@@ -84,7 +84,7 @@ jobs:
           ../.github/workflows/update_xdsl_pyodide_build.py packages/xdsl/meta.yaml ../xdsl frozenlist
           ../.github/workflows/update_xdsl_pyodide_build.py packages/riscemu/meta.yaml ../riscemu
 
-          PYODIDE_PACKAGES="frozenlist,coverage,xdsl,riscemu, numpy, scipy" make
+          PYODIDE_PACKAGES="frozenlist,coverage,xdsl,riscemu, numpy" make
 
       - name: Build the JupyterLite site
         run: |
