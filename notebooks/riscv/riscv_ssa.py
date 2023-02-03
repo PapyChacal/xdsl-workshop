@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Type, Dict, Union, Optional, Any, List, TypeVar, Annotated
+from typing import Type, Dict, Union, Optional, Any, List, TypeVar, Annotated, TypeAlias
 
 from xdsl.ir import (Operation, ParametrizedAttribute, SSAValue, Dialect,
                      Attribute, Data, OpResult)
@@ -216,10 +216,10 @@ class Riscv1Rd2RsOperation(Operation):
     comment: OptOpAttr[StringAttr]
 
     @classmethod
-    def get(cls: Type[Op],
+    def get(cls,
             rs1: Union[Operation, SSAValue],
             rs2: Union[Operation, SSAValue],
-            comment: Optional[str] = None) -> Op:
+            comment: Optional[str] = None) -> Riscv1Rd2RsOperation:
 
         attributes: Dict[str, Any] = {}
         if comment:
@@ -278,11 +278,13 @@ class Riscv1Rd1ImmOperation(Operation):
     comment: OptOpAttr[StringAttr]
 
     @classmethod
-    def get(cls: Type[Op],
-            immediate: Union[int, AnyIntegerAttr],
-            comment: Optional[str] = None) -> Op:
+    def get(cls,
+            immediate: int | AnyIntegerAttr | str | LabelAttr,
+            comment: Optional[str] = None) -> Riscv1Rd1ImmOperation:
         if isinstance(immediate, int):
             immediate = IntegerAttr.from_int_and_width(immediate, 32)
+        if isinstance(immediate, str):
+            immediate = LabelAttr.from_str(immediate)
 
         attributes: Dict[str, Any] = {
             "immediate": immediate,
@@ -593,11 +595,14 @@ class ECALLOp(Operation):
     """
 
     @classmethod
-    def get(cls, num: int | AnyIntegerAttr, has_result: bool = False, *args):
+    def get(cls,
+            num: int | AnyIntegerAttr,
+            has_result: bool = False,
+            operands: list[SSAValue | Operation] = []):
         if isinstance(num, int):
             num = IntegerAttr.from_int_and_width(num, 32)
         return cls.build(
-            operands=[list(args)],
+            operands=[operands],
             attributes={'syscall_num': num},
             result_types=[[RegisterType()]] if has_result else [[]])
 
@@ -699,12 +704,17 @@ class DirectiveOp(Operation):
     value: OpAttr[StringAttr]
 
     @classmethod
-    def get(cls, directive: str | StringAttr, value: str | StringAttr = ""):
-        if isinstance(directive, str):
-            directive = StringAttr.from_str(directive)
-        if isinstance(value, str):
-            value = StringAttr.from_str(value)
-        return cls.build(attributes={'directive': directive, 'value': value})
+    def get(cls: Type[Op], directive: str | StringAttr,
+            value: str | StringAttr) -> Op:
+        attributes: Dict[str, Any] = {
+            "directive":
+            directive if isinstance(directive, StringAttr) else
+            StringAttr.from_str(directive),
+            "value":
+            value
+            if isinstance(value, StringAttr) else StringAttr.from_str(value),
+        }
+        return cls.build(operands=[], result_types=[], attributes=attributes)
 
 
 @irdl_op_definition
