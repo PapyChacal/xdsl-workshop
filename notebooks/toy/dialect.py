@@ -11,8 +11,7 @@ from xdsl.ir import (Dialect, SSAValue, Attribute, Block, Region, Operation,
 from xdsl.dialects.builtin import (IntegerType, FunctionType,
                                    FlatSymbolRefAttr, TensorType,
                                    UnrankedTensorType, i32,
-                                   DenseIntOrFPElementsAttr, AnyTensorType,
-                                   StringAttr)
+                                   DenseIntOrFPElementsAttr, StringAttr)
 from xdsl.irdl import (
     OpAttr,
     Operand,

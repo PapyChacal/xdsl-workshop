@@ -2,10 +2,10 @@ from riscemu import RunConfig, UserModeCPU, RV32I, RV32M, AssemblyFileLoader
 from riscemu.instructions import InstructionSet, Instruction
 
 from io import StringIO
-from typing import List, Type
+from typing import Any, List, Type, cast
 from xdsl.dialects.builtin import ModuleOp
-from .riscv_ssa import SSAValue, LabelAttr, IntegerAttr, DirectiveOp, \
-    LabelOp, RiscvNoParamsOperation, ECALLOp
+from .riscv_ssa import (SSAValue, LabelAttr, IntegerAttr, DirectiveOp, LabelOp,
+                        RiscvNoParamsOperation, ECALLOp)
 
 SCALL_EXIT = 93
 
@@ -19,14 +19,14 @@ class RV_Debug(InstructionSet):
 
 class _SSAVALNamer:
 
-    ssa_val_names = {}
+    ssa_val_names: dict[SSAValue, int] = {}
     idx = 0
 
     def __init__(self) -> None:
         self.ssa_val_names = dict()
         self.idx = 0
 
-    def get_ssa_name(self, reg):
+    def get_ssa_name(self, reg: SSAValue):
         if reg not in self.ssa_val_names:
             id = self.idx
             self.idx += 1
@@ -66,7 +66,9 @@ def print_riscv_ssa(module: ModuleOp):
         elif isinstance(op, ECALLOp):
             for id, arg in enumerate(op.args):
                 out += '\tmv\ta{}, {}\n'.format(id, reg.get_ssa_name(arg))
-            out += '\tli\ta7, {}\n'.format(op.syscall_num.value.data)
+            syscall_num: IntegerAttr[Any] = cast(IntegerAttr[Any],
+                                                 op.syscall_num)
+            out += '\tli\ta7, {}\n'.format(syscall_num.value.data)
             out += '\tscall'
             if op.result and len(op.result.uses) > 0:
                 out += '\n\tmv\t{}, a0'.format(reg.get_ssa_name(op.result))
@@ -75,11 +77,13 @@ def print_riscv_ssa(module: ModuleOp):
 
         out += "\n"
     if not has_region_definitions:
-        out = ".text\n"+out
+        out = ".text\n" + out
     return out
 
 
-def run_riscv(code: str, extensions: List[Type[InstructionSet]] = [], unlimited_regs=False):
+def run_riscv(code: str,
+              extensions: List[Type[InstructionSet]] = [],
+              unlimited_regs: bool = False):
     cfg = RunConfig(
         debug_instruction=False,
         verbosity=5,

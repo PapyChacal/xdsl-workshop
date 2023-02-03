@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-
 from dataclasses import dataclass, field
 from typing import Type, Dict, Union, Optional, Any, List, TypeVar, Annotated
 
 from xdsl.ir import (Operation, ParametrizedAttribute, SSAValue, Dialect,
                      Attribute, Data, OpResult)
 
-from xdsl.irdl import (irdl_op_definition, irdl_attr_definition,
-                       OptOpResult, VarOperand, AnyOf, SingleBlockRegion,
-                       OpAttr, OptOpAttr, OptOperand, builder, Operand)
-from xdsl.dialects.builtin import StringAttr, IntegerAttr
+from xdsl.irdl import (irdl_op_definition, irdl_attr_definition, OptOpResult,
+                       VarOperand, AnyOf, SingleBlockRegion, OpAttr, OptOpAttr,
+                       OptOperand, builder, Operand)
+from xdsl.dialects.builtin import StringAttr, IntegerAttr, AnyIntegerAttr
 
-from xdsl.parser import Parser
+from xdsl.parser import BaseParser
 from xdsl.printer import Printer
 
 
@@ -85,13 +84,12 @@ class RegisterAttr(Data[Register]):
     name = "riscv.reg"
 
     @staticmethod
-    def parse_parameter(parser: Parser) -> Register:
-        name = parser.parse_while(lambda x: x != ">")
-        return Register.from_name(name)
+    def parse_parameter(parser: BaseParser) -> Register:
+        assert False
 
     @staticmethod
-    def print_parameter(reg: Register, printer: Printer) -> None:
-        printer.print_string(reg.get_abi_name())
+    def print_parameter(data: Register, printer: Printer) -> None:
+        printer.print_string(data.get_abi_name())
 
     @staticmethod
     @builder
@@ -114,13 +112,12 @@ class LabelAttr(Data[str]):
     name = "riscv.label"
 
     @staticmethod
-    def parse_parameter(parser: Parser) -> Data:
-        data = parser.parse_while(lambda x: x != ">")
-        return LabelAttr(data)
+    def parse_parameter(parser: BaseParser) -> str:
+        assert False
 
     @staticmethod
-    def print_parameter(label: str, printer: Printer) -> None:
-        printer.print_string(label)
+    def print_parameter(data: str, printer: Printer) -> None:
+        printer.print_string(data)
 
     @staticmethod
     @builder
@@ -145,18 +142,18 @@ class Riscv1Rd1Rs1ImmOperation(Operation):
     @classmethod
     def get(cls: Type[Op],
             rs1: Union[Operation, SSAValue],
-            immediate: Union[int, IntegerAttr, str, LabelAttr],
+            immediate: Union[int, AnyIntegerAttr, str, LabelAttr],
             comment: Optional[str] = None) -> Op:
         if isinstance(immediate, int):
             immediate = IntegerAttr.from_int_and_width(immediate, 32)
         elif isinstance(immediate, str):
             immediate = LabelAttr.from_str(immediate)
 
-        attributes: Dict[str, Any] = {
+        attributes: Dict[str, Attribute] = {
             "immediate": immediate,
         }
         if comment:
-            attributes["comment"] = comment
+            attributes["comment"] = StringAttr.from_str(comment)
         return cls.build(operands=[rs1],
                          result_types=[RegisterType()],
                          attributes=attributes)
@@ -172,7 +169,7 @@ class Riscv2Rs1ImmOperation(Operation):
     def get(cls: Type[Op],
             rs1: Union[Operation, SSAValue],
             rs2: Union[Operation, SSAValue],
-            immediate: Union[int, IntegerAttr, str, LabelAttr],
+            immediate: Union[int, AnyIntegerAttr, str, LabelAttr],
             comment: Optional[str] = None) -> Op:
         if isinstance(immediate, int):
             immediate = IntegerAttr.from_int_and_width(immediate, 32)
@@ -197,18 +194,18 @@ class Riscv2Rs1OffOperation(Operation):
     def get(cls: Type[Op],
             rs1: Union[Operation, SSAValue],
             rs2: Union[Operation, SSAValue],
-            offset: Union[int, IntegerAttr, LabelAttr],
+            offset: Union[int, AnyIntegerAttr, LabelAttr],
             comment: Optional[str] = None) -> Op:
         if isinstance(offset, int):
             offset = IntegerAttr.from_int_and_width(offset, 32)
         if isinstance(offset, str):
             offset = LabelAttr.from_str(offset)
 
-        attributes: Dict[str, Any] = {
+        attributes: Dict[str, Attribute] = {
             "offset": offset,
         }
         if comment:
-            attributes["comment"] = comment
+            attributes["comment"] = StringAttr.from_str(comment)
         return cls.build(operands=[rs1, rs2], attributes=attributes)
 
 
@@ -241,7 +238,7 @@ class Riscv1Rs1Rt1OffOperation(Operation):
     @classmethod
     def get(cls: Type[Op],
             rt: Union[Operation, SSAValue],
-            offset: Union[int, IntegerAttr],
+            offset: Union[int, AnyIntegerAttr],
             comment: Optional[str] = None) -> Op:
         if isinstance(offset, int):
             offset = IntegerAttr.from_int_and_width(offset, 32)
@@ -260,7 +257,7 @@ class Riscv1OffOperation(Operation):
 
     @classmethod
     def get(cls: Type[Op],
-            offset: Union[int, IntegerAttr, LabelAttr],
+            offset: Union[int, AnyIntegerAttr, LabelAttr],
             comment: Optional[str] = None) -> Op:
         if isinstance(offset, int):
             offset = IntegerAttr.from_int_and_width(offset, 32)
@@ -282,7 +279,7 @@ class Riscv1Rd1ImmOperation(Operation):
 
     @classmethod
     def get(cls: Type[Op],
-            immediate: Union[int, IntegerAttr],
+            immediate: Union[int, AnyIntegerAttr],
             comment: Optional[str] = None) -> Op:
         if isinstance(immediate, int):
             immediate = IntegerAttr.from_int_and_width(immediate, 32)
@@ -302,7 +299,7 @@ class Riscv1Rd1OffOperation(Operation):
 
     @classmethod
     def get(cls: Type[Op],
-            offset: Union[int, IntegerAttr],
+            offset: Union[int, AnyIntegerAttr],
             comment: Optional[str] = None) -> Op:
         if isinstance(offset, int):
             offset = IntegerAttr.from_int_and_width(offset, 32)
@@ -323,7 +320,7 @@ class Riscv1Rs1OffOperation(Operation):
     @classmethod
     def get(cls: Type[Op],
             rs: Union[Operation, SSAValue],
-            offset: Union[int, IntegerAttr],
+            offset: Union[int, AnyIntegerAttr],
             comment: Optional[str] = None) -> Op:
         if isinstance(offset, int):
             offset = IntegerAttr.from_int_and_width(offset, 32)
@@ -596,14 +593,15 @@ class ECALLOp(Operation):
     """
 
     @classmethod
-    def get(cls, num: int | IntegerAttr, has_result: bool = False, *args):
+    def get(cls, num: int | AnyIntegerAttr, has_result: bool = False, *args):
         if isinstance(num, int):
             num = IntegerAttr.from_int_and_width(num, 32)
-        return cls.build(operands=[list(args)],
-                         attributes={'syscall_num': num},
-                         result_types=[[RegisterType()]] if has_result else [[]])
+        return cls.build(
+            operands=[list(args)],
+            attributes={'syscall_num': num},
+            result_types=[[RegisterType()]] if has_result else [[]])
 
-    def verify(self):
+    def verify_(self):
         assert len(self.args) < 7
 
 
@@ -706,10 +704,7 @@ class DirectiveOp(Operation):
             directive = StringAttr.from_str(directive)
         if isinstance(value, str):
             value = StringAttr.from_str(value)
-        return cls.build(attributes={
-            'directive': directive,
-            'value': value
-        })
+        return cls.build(attributes={'directive': directive, 'value': value})
 
 
 @irdl_op_definition
@@ -738,11 +733,7 @@ class ReturnOp(Operation):
     @classmethod
     def get(cls: Type[Op],
             value: Optional[Union[Operation, SSAValue]] = None) -> Op:
-        operands = []
-
-        if value != None:
-            operands.append(value)
-
+        operands = [] if value is None else [value]
         return cls.build(operands=operands)
 
 
@@ -756,7 +747,7 @@ class PrintOp(Operation):
     rs: Annotated[Operand, RegisterType]
 
     @classmethod
-    def get(cls, reg):
+    def get(cls, reg: SSAValue | Operation):
         return cls.build(operands=[reg])
 
 
