@@ -700,6 +700,17 @@ class DirectiveOp(Operation):
     directive: OpAttr[StringAttr]
     value: OpAttr[StringAttr]
 
+    @classmethod
+    def get(cls, directive, value=""):
+        if isinstance(directive, str):
+            directive = StringAttr.from_str(directive)
+        if isinstance(value, str):
+            value = StringAttr.from_str(value)
+        return cls.build(attributes={
+            'directive': directive,
+            'value': value
+        })
+
 
 @irdl_op_definition
 class AllocOp(Operation):
@@ -717,7 +728,6 @@ class FuncOp(Operation):
 
     func_name: OpAttr[StringAttr]
     func_body: SingleBlockRegion
-
 
 
 @irdl_op_definition
