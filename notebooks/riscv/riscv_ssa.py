@@ -7,8 +7,8 @@ from typing import Type, Dict, Union, Optional, Any, List, TypeVar, Annotated
 from xdsl.ir import (Operation, ParametrizedAttribute, SSAValue, Dialect,
                      Attribute, Data, OpResult)
 
-from xdsl.irdl import (irdl_op_definition, irdl_attr_definition, 
-                       OptOpResult, VarOperand, AnyOf, SingleBlockRegion, 
+from xdsl.irdl import (irdl_op_definition, irdl_attr_definition,
+                       OptOpResult, VarOperand, AnyOf, SingleBlockRegion,
                        OpAttr, OptOpAttr, OptOperand, builder, Operand)
 from xdsl.dialects.builtin import StringAttr, IntegerAttr
 
@@ -701,7 +701,7 @@ class DirectiveOp(Operation):
     value: OpAttr[StringAttr]
 
     @classmethod
-    def get(cls, directive, value=""):
+    def get(cls, directive: str | StringAttr, value: str | StringAttr = ""):
         if isinstance(directive, str):
             directive = StringAttr.from_str(directive)
         if isinstance(value, str):
