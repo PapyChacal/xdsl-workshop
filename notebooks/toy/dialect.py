@@ -78,9 +78,11 @@ class AddOp(Operation, NoSideEffect):
     @classmethod
     def from_summands(cls: type[AddOp], lhs: SSAValue, rhs: SSAValue) -> AddOp:
         assert isinstance(lhs.typ, TensorType | UnrankedTensorType)
-        element_type = cast(IntegerType,
-                            cast(TensorType[Any], lhs.typ).element_type)
-        return cls.create(result_types=[element_type], operands=[lhs, rhs])
+        if isinstance(lhs.typ, TensorType):
+            result_typ = cast(TensorType[Any], lhs.typ)
+        else:
+            result_typ = rhs.typ
+        return cls.create(result_types=[result_typ], operands=[lhs, rhs])
 
     def verify_(self):
         if not len(self.arguments):
@@ -218,7 +220,11 @@ class MulOp(Operation, NoSideEffect):
 
     @classmethod
     def from_summands(cls: type[MulOp], lhs: SSAValue, rhs: SSAValue) -> MulOp:
-        return cls.create(result_types=[lhs.typ], operands=[lhs, rhs])
+        if isinstance(lhs.typ, TensorType):
+            result_typ = cast(TensorType[Any], lhs.typ)
+        else:
+            result_typ = rhs.typ
+        return cls.create(result_types=[result_typ], operands=[lhs, rhs])
 
     def verify_(self):
         if not len(self.arguments):
