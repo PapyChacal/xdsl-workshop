@@ -13,7 +13,8 @@ from typing import Any, List, Type, cast
 from xdsl.ir import Operation
 from xdsl.dialects.builtin import ModuleOp
 from .riscv_ssa import (FuncOp, SSAValue, LabelAttr, IntegerAttr, DirectiveOp,
-                        LabelOp, RiscvNoParamsOperation, ECALLOp, ReturnOp)
+                        LabelOp, RiscvNoParamsOperation, ECALLOp, ReturnOp,
+                        DataSectionOp, LIOp)
 
 SCALL_EXIT = 93
 
@@ -42,55 +43,45 @@ class _SSAVALNamer:
         return str('%' + str(self.ssa_val_names[reg]))
 
 
-@dataclass
-class CodeBuilder:
+def print_riscv_ssa(module: ModuleOp, memory: int = 1024) -> str:
+    data_ops: list[Operation] = []
+    text_ops: list[Operation] = []
 
-    memory: int
-    data_ops: list[Operation]
-    text_ops: list[Operation]
+    for op in module.regions[0].blocks[0].ops:
+        if isinstance(op, DataSectionOp):
+            # There should be only one data section
+            data_ops = op.regions[0].blocks[0].ops
+            continue
 
-    @staticmethod
-    def build(module: ModuleOp) -> CodeBuilder:
-        data_ops: list[Operation] = []
-        text_ops: list[Operation] = []
+        assert isinstance(op, FuncOp)
 
-        for func_op in module.regions[0].ops:
-            assert isinstance(func_op, FuncOp)
+        func_name = op.func_name.data
+        func_ops = op.func_body.blocks[0].ops
 
-            # add support for other functions in the future, printer assumes only main
-            assert func_op.func_name.data == 'main'
+        # add support for other functions in the future, printer assumes only main
+        assert func_name == 'main'
+        # The verifier should have caught this but the last op in a FuncOp should
+        # be a ReturnOp
+        assert isinstance(func_ops[-1], ReturnOp)
 
-            text_ops.append(LabelOp.get(func_op.name))
-            for op in func_op.func_body.blocks[0].ops:
-                if isinstance(op, ReturnOp):
-                    # ReturnOp doesn't do anything right now
-                    continue
-                text_ops.append(op)
+        text_ops.append(LabelOp.get(func_name))
+        text_ops.extend(func_ops[:-1])
 
-        return CodeBuilder(100, data_ops, text_ops)
-
-
-def print_riscv_ssa(module: ModuleOp):
-    return print_riscv_code(CodeBuilder.build(module))
-
-
-def print_riscv_code(code_builder: CodeBuilder) -> str:
     preamble_ops = (
         DirectiveOp.get(".bss", ""),  # bss stands for block starting symbol
         LabelOp.get("heap"),
-        DirectiveOp.get(".space", f'{code_builder.memory}'),
+        DirectiveOp.get(".space", f'{memory}'),
     )
 
-    data_ops_prefix = (DirectiveOp.get(".data", ""), ) if len(
-        code_builder.data_ops) else ()
+    data_ops_prefix = (DirectiveOp.get(".data", ""), ) if len(data_ops) else ()
 
     text_ops_prefix = (DirectiveOp.get(".text", ""), )
 
     # perform the "exit" syscall, opcode 93
     text_ops_suffix = (ECALLOp.get(93), )
 
-    ops = chain(preamble_ops, data_ops_prefix, code_builder.data_ops,
-                text_ops_prefix, code_builder.text_ops, text_ops_suffix)
+    ops = chain(preamble_ops, data_ops_prefix, data_ops, text_ops_prefix,
+                text_ops, text_ops_suffix)
 
     out = ""
     reg = _SSAVALNamer()

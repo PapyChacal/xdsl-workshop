@@ -800,6 +800,26 @@ class ReturnOp(Operation):
         return cls.build(operands=operands)
 
 
+@irdl_op_definition
+class DataSectionOp(Operation):
+    '''
+    This instruction corresponds to the data section. It should contain `LabelOp`s and
+    `DirectiveOp`s for statically allocated data.
+    '''
+    name = 'riscv.data_section'
+
+    data: SingleBlockRegion
+
+    @staticmethod
+    def from_region(region: Region) -> DataSectionOp:
+        return DataSectionOp.create(regions=[region])
+
+    @staticmethod
+    def from_ops(ops: list[Operation]) -> DataSectionOp:
+        region = Region.from_operation_list(ops)
+        return DataSectionOp.from_region(region)
+
+
 # debugging instructions:
 
 
@@ -820,6 +840,7 @@ riscv_ssa_ops: List[Type[Operation]] = [
     BGEOp, BLTUOp, BGEUOp, AddOp, AddIOp, SubOp, LUIOp, LIOp, AUIPCOp, XOROp,
     XORIOp, OROp, ORIOp, ANDOp, ANDIOp, SLTOp, SLTIOp, SLTUOp, SLTIUOp, JOp,
     JALOp, JALROp, ECALLOp, EBREAKOp, MULOp, MULHOp, MULHSUOp, MULHUOp, DIVOp,
-    DIVUOp, REMOp, REMUOp, LabelOp, CallOp, AllocOp, FuncOp, ReturnOp
+    DIVUOp, REMOp, REMUOp, LabelOp, CallOp, AllocOp, FuncOp, ReturnOp,
+    DataSectionOp
 ]
 RISCVSSA = Dialect(riscv_ssa_ops, riscv_ssa_attrs)
