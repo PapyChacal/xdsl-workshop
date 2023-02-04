@@ -1,11 +1,19 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from itertools import chain
+
 from riscemu import RunConfig, UserModeCPU, RV32I, RV32M, AssemblyFileLoader
 from riscemu.instructions import InstructionSet, Instruction
 
 from io import StringIO
 from typing import Any, List, Type, cast
+
+from xdsl.ir import Operation
 from xdsl.dialects.builtin import ModuleOp
-from .riscv_ssa import (SSAValue, LabelAttr, IntegerAttr, DirectiveOp, LabelOp,
-                        RiscvNoParamsOperation, ECALLOp)
+from .riscv_ssa import (FuncOp, SSAValue, LabelAttr, IntegerAttr, DirectiveOp,
+                        LabelOp, RiscvNoParamsOperation, ECALLOp, ReturnOp)
 
 SCALL_EXIT = 93
 
@@ -34,9 +42,57 @@ class _SSAVALNamer:
         return str('%' + str(self.ssa_val_names[reg]))
 
 
+@dataclass
+class CodeBuilder:
+
+    memory: int
+    data_ops: list[Operation]
+    text_ops: list[Operation]
+
+    @staticmethod
+    def build(module: ModuleOp) -> CodeBuilder:
+        data_ops: list[Operation] = []
+        text_ops: list[Operation] = []
+
+        for func_op in module.regions[0].ops:
+            assert isinstance(func_op, FuncOp)
+
+            # add support for other functions in the future, printer assumes only main
+            assert func_op.func_name.data == 'main'
+
+            text_ops.append(LabelOp.get(func_op.name))
+            for op in func_op.func_body.blocks[0].ops:
+                if isinstance(op, ReturnOp):
+                    # ReturnOp doesn't do anything right now
+                    continue
+                text_ops.append(op)
+
+        return CodeBuilder(100, data_ops, text_ops)
+
+
 def print_riscv_ssa(module: ModuleOp):
+    return print_riscv_code(CodeBuilder.build(module))
+
+
+def print_riscv_code(code_builder: CodeBuilder) -> str:
+    preamble_ops = (
+        DirectiveOp.get(".bss", ""),  # bss stands for block starting symbol
+        LabelOp.get("heap"),
+        DirectiveOp.get(".space", f'{code_builder.memory}'),
+    )
+
+    data_ops_prefix = (DirectiveOp.get(".data", ""), ) if len(
+        code_builder.data_ops) else ()
+
+    text_ops_prefix = (DirectiveOp.get(".text", ""), )
+
+    # perform the "exit" syscall, opcode 93
+    text_ops_suffix = (ECALLOp.get(93), )
+
+    ops = chain(preamble_ops, data_ops_prefix, code_builder.data_ops,
+                text_ops_prefix, code_builder.text_ops, text_ops_suffix)
+
     out = ""
-    has_region_definitions = False
     reg = _SSAVALNamer()
 
     def get_all_regs(op):
@@ -53,12 +109,10 @@ def print_riscv_ssa(module: ModuleOp):
                 else:
                     yield val.data
 
-    for op in module.regions[0].ops:
+    for op in ops:
         name = '.'.join(op.name.split(".")[1:])
         if isinstance(op, DirectiveOp):
             out += "{} {}".format(op.directive.data, op.value.data)
-            if op.directive.data.startswith("."):
-                has_region_definitions = True
         elif isinstance(op, LabelOp):
             out += "{}:".format(op.label.data)
         elif isinstance(op, RiscvNoParamsOperation):
@@ -76,8 +130,7 @@ def print_riscv_ssa(module: ModuleOp):
             out += "\t{}\t{}".format(name, ", ".join(get_all_regs(op)))
 
         out += "\n"
-    if not has_region_definitions:
-        out = ".text\n" + out
+
     return out
 
 

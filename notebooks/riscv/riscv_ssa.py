@@ -4,12 +4,13 @@ from dataclasses import dataclass, field
 from typing import Type, Dict, Union, Optional, Any, List, TypeVar, Annotated
 
 from xdsl.ir import (Operation, ParametrizedAttribute, SSAValue, Dialect,
-                     Attribute, Data, OpResult)
+                     Attribute, Data, OpResult, Region)
 
 from xdsl.irdl import (irdl_op_definition, irdl_attr_definition, OptOpResult,
                        VarOperand, SingleBlockRegion, OpAttr, OptOpAttr,
                        OptOperand, builder, Operand)
 from xdsl.dialects.builtin import StringAttr, IntegerAttr, AnyIntegerAttr
+from xdsl.utils.exceptions import VerifyException
 
 from xdsl.parser import BaseParser
 from xdsl.printer import Printer
@@ -734,6 +735,58 @@ class FuncOp(Operation):
     func_name: OpAttr[StringAttr]
     func_body: SingleBlockRegion
 
+    @staticmethod
+    def from_region(name: str, region: Region) -> FuncOp:
+        attributes: dict[str, Attribute] = {
+            "func_name": StringAttr.from_str(name)
+        }
+
+        return FuncOp.create(attributes=attributes, regions=[region])
+
+    @staticmethod
+    def from_ops(name: str, ops: list[Operation]) -> FuncOp:
+        region = Region.from_operation_list(ops)
+        return FuncOp.from_region(name, region)
+
+    def verify_(self):
+        # Check that the returned value matches the type of the function
+        if len(self.func_body.blocks) != 1:
+            raise VerifyException("Expected FuncOp to contain one block")
+
+        block = self.func_body.blocks[0]
+
+        if not len(block.ops):
+            raise VerifyException("Expected FuncOp to not be empty")
+
+        last_op = block.ops[-1]
+
+        if not isinstance(last_op, ReturnOp):
+            raise VerifyException(
+                "Expected last op of FuncOp to be a ReturnOp")
+
+        # Sasha: the following is copy/pasted code from the Toy dialect that checks
+        # whether the type of the function matches the return. But the riscv FuncOp
+        # doesn't have a function type, so I'm not sure whether one needs to be added,
+        # or the ReturnOp needs to lose its operand.
+
+        # operand = last_op.value
+        # operand_typ = None if operand is None else operand.typ
+
+        # return_typs = self.function_type.outputs.data
+
+        # if len(return_typs):
+        #     if len(return_typs) == 1:
+        #         return_typ = return_typs[0]
+        #     else:
+        #         raise VerifyException(
+        #             "Expected return type of func to have 0 or 1 values")
+        # else:
+        #     return_typ = None
+
+        # if operand_typ != return_typ:
+        #     raise VerifyException(
+        #         "Expected return value to match return type of function")
+
 
 @irdl_op_definition
 class ReturnOp(Operation):
@@ -743,7 +796,7 @@ class ReturnOp(Operation):
     @classmethod
     def get(cls: Type[Op],
             value: Optional[Union[Operation, SSAValue]] = None) -> Op:
-        operands = [] if value is None else [value]
+        operands = [[]] if value is None else [value]
         return cls.build(operands=operands)
 
 
