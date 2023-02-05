@@ -4,12 +4,12 @@ from xdsl.ir import MLContext
 from xdsl.dialects.builtin import ModuleOp
 from xdsl.printer import Printer
 
-from .dialect import Toy
-from .mlir_gen import MLIRGen
-from .parser import Parser
+from toy.dialect import Toy
+from toy.mlir_gen import MLIRGen
+from toy.parser import Parser
 
 
-def parse(program: str, ctx: MLContext | None = None) -> ModuleOp:
+def parse_toy(program: str, ctx: MLContext | None = None) -> ModuleOp:
     if ctx is None:
         ctx = MLContext()
         ctx.register_dialect(Toy)
