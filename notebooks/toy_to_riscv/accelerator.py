@@ -1,10 +1,11 @@
+# pyright: reportMissingTypeStubs=false
+
 from riscemu.instructions import InstructionSet, Instruction
 from riscemu.MMU import MMU
 from riscemu.types import Int32
 
-from typing import cast
-
 from functools import reduce
+
 
 def tensor_description(shape: list[int], data: list[int]) -> str:
     if len(shape) == 1:
@@ -15,32 +16,43 @@ def tensor_description(shape: list[int], data: list[int]) -> str:
     else:
         return '[]'
 
+
 # Define a RISC-V ISA extension by subclassing InstructionSet
 class ToyAccelerator(InstructionSet):
     # each method beginning with instruction_ will be available to the Emulator
-    
+
+    # add typed helpers
+    @property
+    def mu(self) -> MMU:
+        'Memory Unit'
+        return self.mmu  # type: ignore
+
+    def set_reg(self, reg: str, value: int):
+        self.regs.set(reg, Int32(value))  # type: ignore
+
+    def get_reg(self, reg: str) -> int:
+        return self.regs.get(reg).value  # type: ignore
+
     def ptr_read(self, ptr: int, /, offset: int = 0) -> int:
-        mmu = cast(MMU, self.mmu)
-        byte_array = mmu.read(ptr + offset * 4, 4)
+        byte_array = self.mu.read(ptr + offset * 4, 4)
         return int.from_bytes(byte_array, byteorder="little")
-    
+
     def ptr_write(self, ptr: int, /, value: int, offset: int = 0):
-        mmu = cast(MMU, self.mmu)
         byte_array = bytearray(value.to_bytes(4, byteorder="little"))
-        mmu.write(ptr + offset * 4, 4, byte_array)
+        self.mu.write(ptr + offset * 4, 4, byte_array)
 
     def buffer_read(self, ptr: int, len: int, /, offset: int = 0) -> list[int]:
         return [
-            self.ptr_read(ptr, offset) for offset in range(offset, offset+len)
+            self.ptr_read(ptr, offset)
+            for offset in range(offset, offset + len)
         ]
 
     def buffer_write(self, ptr: int, /, data: list[int], offset: int = 0):
         for i, value in enumerate(data):
-            self.ptr_write(ptr, value=value, offset=offset+i)
+            self.ptr_write(ptr, value=value, offset=offset + i)
 
     def buffer_copy(self, /, source: int, destination: int, count: int):
-        mmu = cast(MMU, self.mmu)
-        mmu.write(destination, count * 4, mmu.read(source, count * 4))
+        self.mu.write(destination, count * 4, self.mu.read(source, count * 4))
 
     # Vector helpers
 
@@ -61,12 +73,14 @@ class ToyAccelerator(InstructionSet):
 
     def vector_add(self, lhs: int, rhs: int):
         '''lhs += rhs'''
-        count = self.vector_count(lhs)
-        data = [l + r for (l, r) in zip(self.vector_data(lhs), self.vector_data(rhs))]
+        data = [
+            l + r
+            for (l, r) in zip(self.vector_data(lhs), self.vector_data(rhs))
+        ]
         self.buffer_write(lhs, data=data, offset=1)
 
     # Heap helpers
-    
+
     # The heap pointer is the address of the start of the heap, and contains the count
     # of remaining allocated elements. Defaults to 0. This means that it can
     # be used as an append-only vector.
@@ -89,11 +103,11 @@ class ToyAccelerator(InstructionSet):
     # the shape, followed by the data
     # [] -> [2, 0, 0] (rank: 0, shape: [], count: 0, data: [])
     # [1, 2] -> [5, 1, 2, 2, 1, 2] (rank: 1, shape: [2], count: 2, data: [1, 2])
-    # [[1, 2, 3], [4, 5, 6]] 
+    # [[1, 2, 3], [4, 5, 6]]
     #   -> [10, 2, 2, 3, 6, 1, 2, 3, 4, 5, 6] (
-    #       rank: 2, 
-    #       shape: [2, 3], 
-    #       count: 2, 
+    #       rank: 2,
+    #       shape: [2, 3],
+    #       count: 2,
     #       data: [1, 2, 3, 4, 5, 6]
     #   )
 
@@ -122,9 +136,11 @@ class ToyAccelerator(InstructionSet):
 
     def tensor_add(self, lhs: int, rhs: int):
         '''lhs += rhs'''
-        self.vector_add(self.tensor_data_array(lhs), self.tensor_data_array(rhs))
+        self.vector_add(self.tensor_data_array(lhs),
+                        self.tensor_data_array(rhs))
 
-    def tensor_make(self, shape_ptr: int, data_ptr: int, /, heap_ptr: int) -> int:
+    def tensor_make(self, shape_ptr: int, data_ptr: int, /,
+                    heap_ptr: int) -> int:
         rank = self.vector_count(shape_ptr)
         count = self.vector_count(data_ptr)
         storage_len = rank + count + 3
@@ -143,11 +159,11 @@ class ToyAccelerator(InstructionSet):
         """
         # get the input register
         t_ptr_reg = ins.get_reg(0)
-        t_ptr = int(self.regs.get(t_ptr_reg))
+        t_ptr = self.get_reg(t_ptr_reg)
 
         shape = self.tensor_shape(t_ptr)
         data = self.tensor_data(t_ptr)
-        
+
         print(tensor_description(shape, data))
 
     def instruction_toy_add(self, ins: Instruction):
@@ -161,10 +177,10 @@ class ToyAccelerator(InstructionSet):
         rhs_ptr_reg = ins.get_reg(2)
         heap_ptr_reg = ins.get_reg(3)
 
-        l_ptr = int(self.regs.get(lhs_ptr_reg))
-        r_ptr = int(self.regs.get(rhs_ptr_reg))
-        h_ptr = int(self.regs.get(heap_ptr_reg))
-        
+        l_ptr = self.get_reg(lhs_ptr_reg)
+        r_ptr = self.get_reg(rhs_ptr_reg)
+        h_ptr = self.get_reg(heap_ptr_reg)
+
         l_shape = self.tensor_shape(l_ptr)
         r_shape = self.tensor_shape(r_ptr)
 
@@ -173,7 +189,7 @@ class ToyAccelerator(InstructionSet):
         d_ptr = self.tensor_copy(l_ptr, heap_ptr=h_ptr)
         self.tensor_add(d_ptr, r_ptr)
 
-        self.regs.set(destination_ptr_reg, Int32(d_ptr))
+        self.set_reg(destination_ptr_reg, d_ptr)
 
     def instruction_toy_reshape(self, ins: Instruction):
         """
@@ -186,12 +202,12 @@ class ToyAccelerator(InstructionSet):
         shape_ptr_reg = ins.get_reg(2)
         heap_ptr_reg = ins.get_reg(3)
 
-        i_ptr = int(self.regs.get(input_ptr_reg))
-        s_ptr = int(self.regs.get(shape_ptr_reg))
-        h_ptr = int(self.regs.get(heap_ptr_reg))
-        
+        i_ptr = self.get_reg(input_ptr_reg)
+        s_ptr = self.get_reg(shape_ptr_reg)
+        h_ptr = self.get_reg(heap_ptr_reg)
+
         data_ptr = self.tensor_data_array(i_ptr)
 
         d_ptr = self.tensor_make(s_ptr, data_ptr, heap_ptr=h_ptr)
 
-        self.regs.set(destination_ptr_reg, Int32(d_ptr))
+        self.set_reg(destination_ptr_reg, d_ptr)
