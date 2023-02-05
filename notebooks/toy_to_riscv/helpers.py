@@ -4,9 +4,13 @@ from xdsl.ir import MLContext
 from xdsl.dialects.builtin import ModuleOp
 from xdsl.printer import Printer
 
+from riscv.emulator_iop import run_riscv
+
 from toy.dialect import Toy
 from toy.mlir_gen import MLIRGen
 from toy.parser import Parser
+
+from .accelerator import ToyAccelerator
 
 
 def parse_toy(program: str, ctx: MLContext | None = None) -> ModuleOp:
@@ -21,3 +25,7 @@ def parse_toy(program: str, ctx: MLContext | None = None) -> ModuleOp:
 
 def print_module(module: ModuleOp):
     Printer(target=Printer.Target.MLIR).print(module)
+
+
+def emulate_riscv(program: str):
+    run_riscv(program, extensions=[ToyAccelerator], unlimited_regs=True)
