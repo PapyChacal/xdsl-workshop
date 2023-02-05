@@ -249,7 +249,7 @@ class PrintOp(Operation):
     no results.
     """
     name: str = 'toy.print'
-    arguments: Annotated[VarOperand, AnyAttr()]
+    input: Annotated[Operand, AnyAttr()]
 
     @classmethod
     def from_input(cls: type[PrintOp], input: SSAValue) -> PrintOp:
