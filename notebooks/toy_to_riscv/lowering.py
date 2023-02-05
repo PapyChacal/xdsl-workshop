@@ -161,3 +161,18 @@ class LowerReshapeOp(DataSectionRewritePattern, HeapRewritePattern):
             shape := rd.LIOp.get(label),
             trd.ReshapeTensorOp.get(op.arg, shape, heap_ptr)
         ])
+
+
+class LowerAddOp(HeapRewritePattern):
+
+    def shape_data(self, shape: list[int]) -> list[int]:
+        rank = len(shape)
+        encoded_ints = [rank, *shape]
+        return encoded_ints
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: td.AddOp, rewriter: PatternRewriter):
+        heap_ptr = self.heap_address(op)
+
+        rewriter.replace_matched_op(
+            trd.AddTensorOp.get(op.lhs, op.rhs, heap_ptr))
