@@ -3,6 +3,7 @@ from pathlib import Path
 from xdsl.ir import MLContext
 from xdsl.dialects.builtin import ModuleOp
 from xdsl.printer import Printer
+from xdsl.pattern_rewriter import PatternRewriteWalker
 
 from riscv.emulator_iop import run_riscv
 
@@ -11,6 +12,8 @@ from toy.mlir_gen import MLIRGen
 from toy.parser import Parser
 
 from .accelerator import ToyAccelerator
+
+from .lowering import AddDataSection, LowerFuncOp, LowerReturnOp, LowerConstantOp
 
 
 def parse_toy(program: str, ctx: MLContext | None = None) -> ModuleOp:
@@ -25,6 +28,17 @@ def parse_toy(program: str, ctx: MLContext | None = None) -> ModuleOp:
 
 def print_module(module: ModuleOp):
     Printer(target=Printer.Target.MLIR).print(module)
+
+
+def lower_toy(module: ModuleOp) -> ModuleOp:
+    copy = module.clone()
+
+    PatternRewriteWalker(AddDataSection()).rewrite_module(copy)
+    PatternRewriteWalker(LowerFuncOp()).rewrite_module(copy)
+    PatternRewriteWalker(LowerReturnOp()).rewrite_module(copy)
+    PatternRewriteWalker(LowerConstantOp()).rewrite_module(copy)
+
+    return copy
 
 
 def emulate_riscv(program: str):
