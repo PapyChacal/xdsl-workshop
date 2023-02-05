@@ -2,9 +2,9 @@ from xdsl.ir import MLContext, Operation
 from xdsl.dialects.builtin import ModuleOp
 from xdsl.printer import Printer
 
-from ..toy.dialect import Toy
+from toy.dialect import Toy
 
-from ..riscv.riscv_ssa import LabelOp, LIOp, MULOp, AddOp, ECALLOp, RISCVSSA, DirectiveOp, LWOp
+from riscv.riscv_ssa import LabelOp, LIOp, MULOp, AddOp, ECALLOp, RISCVSSA, DirectiveOp, LWOp
 
 context = MLContext()
 
