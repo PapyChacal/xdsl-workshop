@@ -1,6 +1,6 @@
 from collections import Counter
 
-from xdsl.ir import Operation
+from xdsl.ir import Operation, SSAValue
 from xdsl.dialects.builtin import ModuleOp, UnrankedTensorType, TensorType
 from xdsl.pattern_rewriter import (op_type_rewrite_pattern, RewritePattern,
                                    PatternRewriter)
@@ -92,6 +92,17 @@ class DataSectionRewritePattern(RewritePattern):
              rd.DirectiveOp.get(".word", encoded_data)])
 
 
+class HeapRewritePattern(RewritePattern):
+
+    def heap_address(self, op: Operation) -> SSAValue:
+        block = op.parent_block()
+        assert block is not None
+        heap_op = block.ops[0]
+        # TODO: check that this is indeed the heap op
+        # assert isinstance(heap_op, rd.LIOp) and isinstance(heap_op.immediate, rd.LabelAttr)
+        return heap_op.results[0]
+
+
 class LowerConstantOp(DataSectionRewritePattern):
 
     def tensor_data(self, shape: list[int], data: list[int]) -> list[int]:
@@ -126,7 +137,7 @@ class LowerPrintOp(RewritePattern):
         rewriter.replace_matched_op(trd.PrintTensorOp.get(op.input))
 
 
-class LowerReshapeOp(DataSectionRewritePattern):
+class LowerReshapeOp(DataSectionRewritePattern, HeapRewritePattern):
 
     def shape_data(self, shape: list[int]) -> list[int]:
         rank = len(shape)
@@ -144,13 +155,9 @@ class LowerReshapeOp(DataSectionRewritePattern):
 
         self.add_data(op, label, self.shape_data(shape))
 
-        block = op.parent_block()
-        assert block is not None
-        heap_op = block.ops[0]
-        # TODO: check that this is indeed the heap op
-        # assert isinstance(heap_op, rd.LIOp) and isinstance(heap_op.immediate, rd.LabelAttr)
+        heap_ptr = self.heap_address(op)
 
         rewriter.replace_matched_op([
             shape := rd.LIOp.get(label),
-            trd.ReshapeTensorOp.get(op.arg, shape, heap_op)
+            trd.ReshapeTensorOp.get(op.arg, shape, heap_ptr)
         ])
