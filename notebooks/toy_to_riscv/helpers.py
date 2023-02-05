@@ -13,9 +13,9 @@ from toy.parser import Parser
 
 from .accelerator import ToyAccelerator
 
-from .lowering import (AddDataSection, LowerFuncOp, LowerReturnOp,
-                       LowerConstantOp, LowerPrintOp, LowerReshapeOp,
-                       LowerAddOp)
+from .lower_from_toy import (AddSections, LowerFuncOp, LowerReturnOp,
+                             LowerConstantOp, LowerPrintOp, LowerReshapeOp,
+                             LowerAddOp)
 
 
 def parse_toy(program: str, ctx: MLContext | None = None) -> ModuleOp:
@@ -35,7 +35,7 @@ def print_module(module: ModuleOp):
 def lower_toy(module: ModuleOp) -> ModuleOp:
     copy = module.clone()
 
-    PatternRewriteWalker(AddDataSection()).rewrite_module(copy)
+    PatternRewriteWalker(AddSections()).rewrite_module(copy)
     PatternRewriteWalker(LowerFuncOp()).rewrite_module(copy)
     PatternRewriteWalker(LowerReturnOp()).rewrite_module(copy)
     PatternRewriteWalker(LowerConstantOp()).rewrite_module(copy)

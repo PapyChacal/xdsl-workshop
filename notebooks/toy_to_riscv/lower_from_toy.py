@@ -1,6 +1,6 @@
 from collections import Counter
 
-from xdsl.ir import Operation, SSAValue
+from xdsl.ir import Operation, SSAValue, Block
 from xdsl.dialects.builtin import ModuleOp, UnrankedTensorType, TensorType
 from xdsl.pattern_rewriter import (op_type_rewrite_pattern, RewritePattern,
                                    PatternRewriter)
@@ -10,15 +10,25 @@ import riscv.riscv_ssa as rd
 import toy_to_riscv.dialect as trd
 
 
-class AddDataSection(RewritePattern):
+class AddSections(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: ModuleOp, rewriter: PatternRewriter):
 
-        data_section = rd.DataSectionOp.from_ops([])
+        # bss stands for block starting symbol
+        heap_section = rd.SectionOp.from_ops(
+            '.bss',
+            [
+                rd.LabelOp.get("heap"),
+                rd.DirectiveOp.get(".space", f'{1024}'),  # 1kb
+            ])
+        data_section = rd.SectionOp.from_ops('.data', [])
+        text_section = rd.SectionOp.from_region(
+            '.text',
+            rewriter.move_region_contents_to_new_regions(op.regions[0]))
 
-        # insert a heap pointer at the start of every function
-        rewriter.insert_op_before(data_section, op.regions[0].blocks[0].ops[0])
+        op.body.add_block(
+            Block.from_ops([heap_section, data_section, text_section]))
 
 
 class LowerFuncOp(RewritePattern):
@@ -54,10 +64,10 @@ class LowerReturnOp(RewritePattern):
 
 class DataSectionRewritePattern(RewritePattern):
 
-    _data_section: rd.DataSectionOp | None = None
+    _data_section: rd.SectionOp | None = None
     _counter: Counter[str] = Counter()
 
-    def data_section(self, op: Operation) -> rd.DataSectionOp:
+    def data_section(self, op: Operation) -> rd.SectionOp:
         '''
         Relies on the data secition being inserted earlier by AddDataSection
         '''
@@ -66,9 +76,15 @@ class DataSectionRewritePattern(RewritePattern):
             assert isinstance(
                 module_op, ModuleOp
             ), f'The top level object of {str(op)} must be a ModuleOp'
-            first_op = module_op.regions[0].blocks[0].ops[0]
-            assert isinstance(first_op, rd.DataSectionOp)
-            self._data_section = first_op
+
+            for op in module_op.body.blocks[0].ops:
+                if not isinstance(op, rd.SectionOp):
+                    continue
+                if op.directive.data != '.data':
+                    continue
+                self._data_section = op
+
+            assert self._data_section is not None
 
         return self._data_section
 

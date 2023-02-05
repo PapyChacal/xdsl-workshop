@@ -800,26 +800,6 @@ class ReturnOp(Operation):
         return cls.build(operands=operands)
 
 
-@irdl_op_definition
-class DataSectionOp(Operation):
-    '''
-    This instruction corresponds to the data section. It should contain `LabelOp`s and
-    `DirectiveOp`s for statically allocated data.
-    '''
-    name = 'riscv.data_section'
-
-    data: SingleBlockRegion
-
-    @staticmethod
-    def from_region(region: Region) -> DataSectionOp:
-        return DataSectionOp.create(regions=[region])
-
-    @staticmethod
-    def from_ops(ops: list[Operation]) -> DataSectionOp:
-        region = Region.from_operation_list(ops)
-        return DataSectionOp.from_region(region)
-
-
 # debugging instructions:
 
 
@@ -834,6 +814,31 @@ class PrintOp(Operation):
         return cls.build(operands=[reg])
 
 
+@irdl_op_definition
+class SectionOp(Operation):
+    '''
+    This instruction corresponds to a section. Its block can be added to during 
+    the lowering process.
+    '''
+    name = 'riscv.section'
+
+    directive: OpAttr[StringAttr]
+    data: SingleBlockRegion
+
+    @staticmethod
+    def from_region(directive: str | StringAttr, region: Region) -> SectionOp:
+        if isinstance(directive, str):
+            directive = StringAttr.from_str(directive)
+        return SectionOp.create(attributes={'directive': directive},
+                                regions=[region])
+
+    @staticmethod
+    def from_ops(directive: str | StringAttr,
+                 ops: list[Operation]) -> SectionOp:
+        region = Region.from_operation_list(ops)
+        return SectionOp.from_region(directive, region)
+
+
 riscv_ssa_attrs: List[Type[Attribute]] = [RegisterType]
 riscv_ssa_ops: List[Type[Operation]] = [
     LBOp, LBUOp, LHOp, LHUOp, LWOp, SBOp, SHOp, SWOp, BEQOp, BNEOp, BLTOp,
@@ -841,6 +846,6 @@ riscv_ssa_ops: List[Type[Operation]] = [
     XORIOp, OROp, ORIOp, ANDOp, ANDIOp, SLTOp, SLTIOp, SLTUOp, SLTIUOp, JOp,
     JALOp, JALROp, ECALLOp, EBREAKOp, MULOp, MULHOp, MULHSUOp, MULHUOp, DIVOp,
     DIVUOp, REMOp, REMUOp, LabelOp, CallOp, AllocOp, FuncOp, ReturnOp,
-    DataSectionOp
+    SectionOp
 ]
 RISCVSSA = Dialect(riscv_ssa_ops, riscv_ssa_attrs)
