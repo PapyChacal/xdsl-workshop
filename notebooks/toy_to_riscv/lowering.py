@@ -1,13 +1,13 @@
 from collections import Counter
 
 from xdsl.ir import Operation
-from xdsl.dialects.builtin import ModuleOp, UnrankedTensorType
+from xdsl.dialects.builtin import ModuleOp, UnrankedTensorType, TensorType
 from xdsl.pattern_rewriter import (op_type_rewrite_pattern, RewritePattern,
                                    PatternRewriter)
 
 import toy.dialect as td
 import riscv.riscv_ssa as rd
-# import toy_to_riscv.dialect as trd
+import toy_to_riscv.dialect as trd
 
 
 class AddDataSection(RewritePattern):
@@ -52,7 +52,7 @@ class LowerReturnOp(RewritePattern):
         rewriter.replace_matched_op(rd.ReturnOp.get())
 
 
-class LowerConstantOp(RewritePattern):
+class DataSectionRewritePattern(RewritePattern):
 
     _data_section: rd.DataSectionOp | None = None
     _counter: Counter[str] = Counter()
@@ -72,8 +72,8 @@ class LowerConstantOp(RewritePattern):
 
         return self._data_section
 
-    def label(self, *args: str) -> str:
-        key = '.'.join(args)
+    def label(self, func_name: str, kind: str) -> str:
+        key = f'{func_name}.{kind}'
         count = self._counter[key]
         self._counter[key] += 1
         return f'{key}.{count}'
@@ -85,15 +85,21 @@ class LowerConstantOp(RewritePattern):
         assert isinstance(func_op, rd.FuncOp)
         return func_op.func_name.data
 
-    def encoded_data(self, shape: list[int], data: list[int]) -> str:
+    def add_data(self, op: Operation, label: str, data: list[int]):
+        encoded_data = ', '.join(hex(el) for el in data)
+        self.data_section(op).regions[0].blocks[0].add_ops(
+            [rd.LabelOp.get(label),
+             rd.DirectiveOp.get(".word", encoded_data)])
+
+
+class LowerConstantOp(DataSectionRewritePattern):
+
+    def tensor_data(self, shape: list[int], data: list[int]) -> list[int]:
         rank = len(shape)
         count = len(data)
         total = rank + count + 2
-
         encoded_ints = [total, rank, *shape, count, *data]
-        encoded_data = ', '.join(hex(el) for el in encoded_ints)
-
-        return encoded_data
+        return encoded_ints
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: td.ConstantOp, rewriter: PatternRewriter):
@@ -106,13 +112,45 @@ class LowerConstantOp(RewritePattern):
         shape: list[int] = value_type.get_shape()
         data: list[int] = [int(el.value.data) for el in op.value.data.data]
 
-        label = self.label(self.func_name_of_op(op))
+        label = self.label(self.func_name_of_op(op), 'tensor')
 
-        data_section = self.data_section(op)
-
-        data_section.regions[0].blocks[0].add_ops([
-            rd.LabelOp.get(label),
-            rd.DirectiveOp.get(".word", self.encoded_data(shape, data))
-        ])
+        self.add_data(op, label, self.tensor_data(shape, data))
 
         rewriter.replace_matched_op(rd.LIOp.get(label))
+
+
+class LowerPrintOp(RewritePattern):
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: td.PrintOp, rewriter: PatternRewriter):
+        rewriter.replace_matched_op(trd.PrintTensorOp.get(op.input))
+
+
+class LowerReshapeOp(DataSectionRewritePattern):
+
+    def shape_data(self, shape: list[int]) -> list[int]:
+        rank = len(shape)
+        encoded_ints = [rank, *shape]
+        return encoded_ints
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: td.ReshapeOp, rewriter: PatternRewriter):
+
+        label = self.label(self.func_name_of_op(op), 'shape')
+
+        typ = op.res.typ
+        assert isinstance(typ, TensorType)
+        shape = typ.get_shape()
+
+        self.add_data(op, label, self.shape_data(shape))
+
+        block = op.parent_block()
+        assert block is not None
+        heap_op = block.ops[0]
+        # TODO: check that this is indeed the heap op
+        # assert isinstance(heap_op, rd.LIOp) and isinstance(heap_op.immediate, rd.LabelAttr)
+
+        rewriter.replace_matched_op([
+            shape := rd.LIOp.get(label),
+            trd.ReshapeTensorOp.get(op.arg, shape, heap_op)
+        ])
