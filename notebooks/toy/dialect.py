@@ -72,7 +72,8 @@ class AddOp(Operation, NoSideEffect):
     The shapes of the tensor operands are expected to match.
     """
     name: str = 'toy.add'
-    arguments: Annotated[VarOperand, AnyTensorTypeI32]
+    lhs: Annotated[Operand, AnyTensorTypeI32]
+    rhs: Annotated[Operand, AnyTensorTypeI32]
     res: Annotated[OpResult, AnyTensorTypeI32]
 
     @classmethod
@@ -85,11 +86,10 @@ class AddOp(Operation, NoSideEffect):
         return cls.create(result_types=[result_typ], operands=[lhs, rhs])
 
     def verify_(self):
-        if not len(self.arguments):
-            raise VerifyException("Expected AddOp args to not be empty")
+        args = [self.lhs, self.rhs]
 
         shape = None
-        for arg in self.arguments:
+        for arg in args:
             # Expect shapes to be the same whenever they are defined, no check for unranked
             if isinstance(arg.typ, TensorType):
                 if shape is None:
@@ -215,7 +215,8 @@ class MulOp(Operation, NoSideEffect):
     tensors. The shapes of the tensor operands are expected to match.
     """
     name: str = 'toy.mul'
-    arguments: Annotated[VarOperand, AnyTensorTypeI32]
+    lhs: Annotated[Operand, AnyTensorTypeI32]
+    rhs: Annotated[Operand, AnyTensorTypeI32]
     res: Annotated[OpResult, AnyTensorTypeI32]
 
     @classmethod
@@ -227,11 +228,10 @@ class MulOp(Operation, NoSideEffect):
         return cls.create(result_types=[result_typ], operands=[lhs, rhs])
 
     def verify_(self):
-        if not len(self.arguments):
-            raise VerifyException("Expected MulOp args to not be empty")
+        args = [self.lhs, self.rhs]
 
         shape = None
-        for arg in self.arguments:
+        for arg in args:
             # Expect shapes to be the same whenever they are defined, no check for unranked
             if isinstance(arg.typ, TensorType):
                 if shape is None:
