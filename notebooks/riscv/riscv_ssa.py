@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Type, Dict, Union, Optional, Any, List, TypeVar, Annotated, TypeAlias
+from typing import Type, Dict, Union, Optional, Any, List, TypeVar, Annotated
 
 from xdsl.ir import (Operation, ParametrizedAttribute, SSAValue, Dialect,
                      Attribute, Data, OpResult)
 
 from xdsl.irdl import (irdl_op_definition, irdl_attr_definition, OptOpResult,
-                       VarOperand, AnyOf, SingleBlockRegion, OpAttr, OptOpAttr,
+                       VarOperand, SingleBlockRegion, OpAttr, OptOpAttr,
                        OptOperand, builder, Operand)
 from xdsl.dialects.builtin import StringAttr, IntegerAttr, AnyIntegerAttr
 
@@ -136,7 +136,7 @@ class RegisterType(ParametrizedAttribute):
 class Riscv1Rd1Rs1ImmOperation(Operation):
     rd: Annotated[OpResult, RegisterType]
     rs1: Annotated[Operand, RegisterType]
-    immediate: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    immediate: OpAttr[AnyIntegerAttr | LabelAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -162,7 +162,7 @@ class Riscv1Rd1Rs1ImmOperation(Operation):
 class Riscv2Rs1ImmOperation(Operation):
     rs1: Annotated[Operand, RegisterType]
     rs2: Annotated[Operand, RegisterType]
-    immediate: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    immediate: OpAttr[AnyIntegerAttr | LabelAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -187,7 +187,7 @@ class Riscv2Rs1ImmOperation(Operation):
 class Riscv2Rs1OffOperation(Operation):
     rs1: Annotated[Operand, RegisterType]
     rs2: Annotated[Operand, RegisterType]
-    offset: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    offset: OpAttr[AnyIntegerAttr | LabelAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -232,7 +232,7 @@ class Riscv1Rd2RsOperation(Operation):
 class Riscv1Rs1Rt1OffOperation(Operation):
     rs: Annotated[OpResult, RegisterType]
     rt: Annotated[Operand, RegisterType]
-    offset: OpAttr[IntegerAttr]
+    offset: OpAttr[AnyIntegerAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -252,7 +252,7 @@ class Riscv1Rs1Rt1OffOperation(Operation):
 
 
 class Riscv1OffOperation(Operation):
-    offset: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    offset: OpAttr[AnyIntegerAttr | LabelAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -274,7 +274,7 @@ class Riscv1OffOperation(Operation):
 
 class Riscv1Rd1ImmOperation(Operation):
     rd: Annotated[OpResult, RegisterType]
-    immediate: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    immediate: OpAttr[AnyIntegerAttr | LabelAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -296,7 +296,7 @@ class Riscv1Rd1ImmOperation(Operation):
 
 class Riscv1Rd1OffOperation(Operation):
     rd: Annotated[OpResult, RegisterType]
-    offset: OpAttr[IntegerAttr]
+    offset: OpAttr[AnyIntegerAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -316,7 +316,7 @@ class Riscv1Rd1OffOperation(Operation):
 
 class Riscv1Rs1OffOperation(Operation):
     rs: Annotated[Operand, RegisterType]
-    offset: OpAttr[IntegerAttr]
+    offset: OpAttr[AnyIntegerAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -588,7 +588,7 @@ class JALROp(Riscv1Rd1Rs1ImmOperation):
 class ECALLOp(Operation):
     name = "riscv_ssa.ecall"
     args: Annotated[VarOperand, RegisterType]
-    syscall_num: OpAttr[IntegerAttr]
+    syscall_num: OpAttr[AnyIntegerAttr]
     result: Annotated[OptOpResult, RegisterType]
     """
     Some syscalls return values by putting them into a0. The result register will represent a0.
