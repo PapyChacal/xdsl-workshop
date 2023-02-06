@@ -168,7 +168,7 @@ class LowerPrintOp(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: td.PrintOp, rewriter: PatternRewriter):
-        rewriter.replace_matched_op(trd.PrintTensorOp.get(op.input))
+        rewriter.replace_matched_op(trd.TensorPrintOp.get(op.input))
 
 
 class LowerReshapeOp(DataSectionRewritePattern, HeapRewritePattern):

@@ -9,13 +9,13 @@ from riscv.riscv_ssa import RegisterType
 
 
 @irdl_op_definition
-class PrintTensorOp(Operation):
-    name = "riscv.toy.print.tensor"
+class TensorPrintOp(Operation):
+    name = "riscv.toy.tensor.print"
 
     rs1: Annotated[Operand, RegisterType]
 
     @classmethod
-    def get(cls, rs1: Operation | SSAValue) -> PrintTensorOp:
+    def get(cls, rs1: Operation | SSAValue) -> TensorPrintOp:
         return cls.build(operands=[rs1], result_types=[])
 
 
@@ -127,6 +127,6 @@ class BufferAddOp(Operation):
 
 
 ToyRISCV = Dialect([
-    PrintTensorOp, AddTensorOp, TensorMakeOp, TensorDataOp, TensorShapeOp,
+    TensorPrintOp, AddTensorOp, TensorMakeOp, TensorDataOp, TensorShapeOp,
     ReshapeTensorOp, AllocOp, BufferAddOp
 ], [])
