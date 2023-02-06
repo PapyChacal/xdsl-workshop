@@ -93,4 +93,40 @@ class ReshapeTensorOp(Operation):
                          result_types=[RegisterType()])
 
 
-ToyRISCV = Dialect([PrintTensorOp, AddTensorOp, ReshapeTensorOp], [])
+@irdl_op_definition
+class AllocOp(Operation):
+    name = "riscv.toy.alloc"
+
+    rd: Annotated[OpResult, RegisterType]
+    rs1: Annotated[Operand, RegisterType]
+    rs2: Annotated[Operand, RegisterType]
+
+    @classmethod
+    def get(cls, count_reg: Operation | SSAValue,
+            heap_reg: Operation | SSAValue) -> AllocOp:
+        return cls.build(operands=[count_reg, heap_reg],
+                         result_types=[RegisterType()])
+
+
+@irdl_op_definition
+class BufferAddOp(Operation):
+    name = "riscv.toy.buffer.add"
+
+    rd: Annotated[OpResult, RegisterType]
+    rs1: Annotated[Operand, RegisterType]
+    rs2: Annotated[Operand, RegisterType]
+    rs3: Annotated[Operand, RegisterType]
+    rs4: Annotated[Operand, RegisterType]
+
+    @classmethod
+    def get(cls, count_reg: Operation | SSAValue, lhs: Operation | SSAValue,
+            rhs: Operation | SSAValue,
+            heap_reg: Operation | SSAValue) -> BufferAddOp:
+        return cls.build(operands=[count_reg, lhs, rhs, heap_reg],
+                         result_types=[RegisterType()])
+
+
+ToyRISCV = Dialect([
+    PrintTensorOp, AddTensorOp, TensorMakeOp, TensorDataOp, TensorShapeOp,
+    ReshapeTensorOp, AllocOp, BufferAddOp
+], [])

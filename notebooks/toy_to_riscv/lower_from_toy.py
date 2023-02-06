@@ -142,9 +142,26 @@ class LowerConstantOp(DataSectionRewritePattern, HeapRewritePattern):
 
         shape_op = rd.LIOp.get(shape_label)
         data_op = rd.LIOp.get(data_label)
-        tensor_op = trd.TensorMakeOp.get(shape_op, data_op, heap_op)
+        alloc_len_op = rd.LIOp.get(3)
+        tensor_op = trd.AllocOp.get(alloc_len_op, heap_op)
+        tensor_len_op = rd.LIOp.get(2)
+        tensor_set_len_op = rd.SWOp.get(tensor_len_op, tensor_op, 0,
+                                        'Set tensor storage count')
+        tensor_set_shape_op = rd.SWOp.get(shape_op, tensor_op, 4,
+                                          'Set tensor shape')
+        tensor_set_data_op = rd.SWOp.get(data_op, tensor_op, 8,
+                                         'Set tensor data')
 
-        rewriter.replace_matched_op([shape_op, data_op, tensor_op])
+        rewriter.replace_matched_op([
+            shape_op,
+            data_op,
+            alloc_len_op,
+            tensor_op,
+            tensor_len_op,
+            tensor_set_len_op,
+            tensor_set_shape_op,
+            tensor_set_data_op,
+        ], [tensor_op.rd])
 
 
 class LowerPrintOp(RewritePattern):

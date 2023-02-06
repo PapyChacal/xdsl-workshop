@@ -88,7 +88,7 @@ class ToyAccelerator(InstructionSet):
     def alloc(self, count: int, /, heap_ptr: int) -> int:
         result = self.vector_end(heap_ptr)
         heap_size = self.vector_count(heap_ptr)
-        self.ptr_write(heap_ptr, value=heap_size + count * 4)
+        self.ptr_write(heap_ptr, value=heap_size + count)
         return result
 
     def vector_copy(self, ptr: int, /, heap_ptr: int) -> int:
@@ -102,7 +102,7 @@ class ToyAccelerator(InstructionSet):
     # The tensor is represented as a vector, containing two pointers to vectors:
     # shape and data
     # [] -> [2, -> [0], -> [0]] (rank: 0, shape: [], count: 0, data: [])
-    # [1, 2] -> [2, -> [1, 2, 2], -> [1, 2]] (rank: 1, shape: [2], count: 2, data: [1, 2])
+    # [1, 2] -> [2, -> [1, 2], -> [2, 1, 2]] (rank: 1, shape: [2], count: 2, data: [1, 2])
     # [[1, 2, 3], [4, 5, 6]]
     #   -> [2, -> [2, 2, 3], -> [6, 1, 2, 3, 4, 5, 6]] (
     #       rank: 2,
@@ -229,5 +229,21 @@ class ToyAccelerator(InstructionSet):
         data_ptr = self.tensor_data_array(i_ptr)
 
         d_ptr = self.tensor_make(s_ptr, data_ptr, heap_ptr=h_ptr)
+
+        self.set_reg(destination_ptr_reg, d_ptr)
+
+    def instruction_toy_alloc(self, ins: Instruction):
+        """
+        
+        """
+
+        destination_ptr_reg = ins.get_reg(0)
+        size_reg = ins.get_reg(1)
+        heap_ptr_reg = ins.get_reg(2)
+
+        size = self.get_reg(size_reg)
+        heap_ptr = self.get_reg(heap_ptr_reg)
+
+        d_ptr = self.alloc(size, heap_ptr=heap_ptr)
 
         self.set_reg(destination_ptr_reg, d_ptr)
