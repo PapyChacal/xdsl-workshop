@@ -153,7 +153,7 @@ class ToyAccelerator(InstructionSet):
 
     # Custom instructions
 
-    def instruction_toy_print(self, ins: Instruction):
+    def instruction_toy_print_tensor(self, ins: Instruction):
         """
         This instruction prints a formatted tensor
         [[1, 2, 3], [4, 5, 6]]

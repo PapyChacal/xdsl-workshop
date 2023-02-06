@@ -10,7 +10,7 @@ from riscv.riscv_ssa import RegisterType
 
 @irdl_op_definition
 class PrintTensorOp(Operation):
-    name = "riscv.toy.print"
+    name = "riscv.toy.print.tensor"
 
     rs1: Annotated[Operand, RegisterType]
 
