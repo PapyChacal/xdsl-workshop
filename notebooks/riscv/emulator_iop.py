@@ -7,10 +7,10 @@ from io import StringIO
 from typing import Any, List, Type, cast, Generator
 
 from xdsl.ir import Operation
-from xdsl.dialects.builtin import ModuleOp
+from xdsl.dialects.builtin import ModuleOp, StringAttr
 from .riscv_ssa import (FuncOp, SSAValue, LabelAttr, IntegerAttr, DirectiveOp,
                         LabelOp, RiscvNoParamsOperation, ECALLOp, SectionOp,
-                        ReturnOp)
+                        ReturnOp, Riscv2Rs1ImmOperation)
 
 SCALL_EXIT = 93
 
@@ -96,6 +96,9 @@ def print_riscv_ssa(module: ModuleOp, memory: int = 1024) -> str:
             continue
         else:
             out += "\t{}\t{}".format(name, ", ".join(get_all_regs(op)))
+
+        if isinstance(op, Riscv2Rs1ImmOperation) and op.comment is not None:
+            out += f'\t\t# {op.comment.data}'
 
         out += "\n"
 
