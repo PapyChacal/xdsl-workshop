@@ -119,14 +119,7 @@ class HeapRewritePattern(RewritePattern):
         return heap_op.results[0]
 
 
-class LowerConstantOp(DataSectionRewritePattern):
-
-    def tensor_data(self, shape: list[int], data: list[int]) -> list[int]:
-        rank = len(shape)
-        count = len(data)
-        total = rank + count + 2
-        encoded_ints = [total, rank, *shape, count, *data]
-        return encoded_ints
+class LowerConstantOp(DataSectionRewritePattern, HeapRewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: td.ConstantOp, rewriter: PatternRewriter):
@@ -139,11 +132,19 @@ class LowerConstantOp(DataSectionRewritePattern):
         shape: list[int] = value_type.get_shape()
         data: list[int] = [int(el.value.data) for el in op.value.data.data]
 
-        label = self.label(self.func_name_of_op(op), 'tensor')
+        shape_label = self.label(self.func_name_of_op(op), 'tensor_shape')
+        data_label = self.label(self.func_name_of_op(op), 'tensor_data')
 
-        self.add_data(op, label, self.tensor_data(shape, data))
+        self.add_data(op, shape_label, [len(shape), *shape])
+        self.add_data(op, data_label, [len(data), *data])
 
-        rewriter.replace_matched_op(rd.LIOp.get(label))
+        heap_op = self.heap_address(op)
+
+        shape_op = rd.LIOp.get(shape_label)
+        data_op = rd.LIOp.get(data_label)
+        tensor_op = trd.TensorMakeOp.get(shape_op, data_op, heap_op)
+
+        rewriter.replace_matched_op([shape_op, data_op, tensor_op])
 
 
 class LowerPrintOp(RewritePattern):

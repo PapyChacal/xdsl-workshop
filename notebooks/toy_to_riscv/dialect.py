@@ -36,6 +36,47 @@ class AddTensorOp(Operation):
 
 
 @irdl_op_definition
+class TensorMakeOp(Operation):
+    name = "riscv.toy.tensor.make"
+
+    rd: Annotated[OpResult, RegisterType]
+    rs1: Annotated[Operand, RegisterType]
+    rs2: Annotated[Operand, RegisterType]
+    rs3: Annotated[Operand, RegisterType]
+
+    @classmethod
+    def get(cls, shape_reg: Operation | SSAValue,
+            data_reg: Operation | SSAValue,
+            heap_reg: Operation | SSAValue) -> TensorMakeOp:
+        return cls.build(operands=[shape_reg, data_reg, heap_reg],
+                         result_types=[RegisterType()])
+
+
+@irdl_op_definition
+class TensorDataOp(Operation):
+    name = "riscv.toy.tensor.data"
+
+    rd: Annotated[OpResult, RegisterType]
+    rs1: Annotated[Operand, RegisterType]
+
+    @classmethod
+    def get(cls, tensor_reg: Operation | SSAValue) -> TensorDataOp:
+        return cls.build(operands=[tensor_reg], result_types=[RegisterType()])
+
+
+@irdl_op_definition
+class TensorShapeOp(Operation):
+    name = "riscv.toy.tensor.shape"
+
+    rd: Annotated[OpResult, RegisterType]
+    rs1: Annotated[Operand, RegisterType]
+
+    @classmethod
+    def get(cls, tensor_reg: Operation | SSAValue) -> TensorShapeOp:
+        return cls.build(operands=[tensor_reg], result_types=[RegisterType()])
+
+
+@irdl_op_definition
 class ReshapeTensorOp(Operation):
     name = "riscv.toy.reshape"
 

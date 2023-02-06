@@ -99,12 +99,12 @@ class ToyAccelerator(InstructionSet):
 
     # Tensor helpers
 
-    # The tensor is represented as a vector, containing two concatenated vectors:
-    # the shape, followed by the data
-    # [] -> [2, 0, 0] (rank: 0, shape: [], count: 0, data: [])
-    # [1, 2] -> [5, 1, 2, 2, 1, 2] (rank: 1, shape: [2], count: 2, data: [1, 2])
+    # The tensor is represented as a vector, containing two pointers to vectors:
+    # shape and data
+    # [] -> [2, -> [0], -> [0]] (rank: 0, shape: [], count: 0, data: [])
+    # [1, 2] -> [2, -> [1, 2, 2], -> [1, 2]] (rank: 1, shape: [2], count: 2, data: [1, 2])
     # [[1, 2, 3], [4, 5, 6]]
-    #   -> [10, 2, 2, 3, 6, 1, 2, 3, 4, 5, 6] (
+    #   -> [2, -> [2, 2, 3], -> [6, 1, 2, 3, 4, 5, 6]] (
     #       rank: 2,
     #       shape: [2, 3],
     #       count: 2,
@@ -114,7 +114,7 @@ class ToyAccelerator(InstructionSet):
     # Where rank is the length of the shape subarray, and count is the length of data.
 
     def tensor_shape_array(self, ptr: int) -> int:
-        return ptr + 4
+        return self.ptr_read(ptr, offset=1)
 
     def tensor_rank(self, ptr: int) -> int:
         return self.vector_count(self.tensor_shape_array(ptr))
@@ -123,7 +123,7 @@ class ToyAccelerator(InstructionSet):
         return self.vector_data(self.tensor_shape_array(ptr))
 
     def tensor_data_array(self, ptr: int) -> int:
-        return self.vector_end(self.tensor_shape_array(ptr))
+        return self.ptr_read(ptr, offset=2)
 
     def tensor_count(self, ptr: int):
         return self.vector_count(self.tensor_data_array(ptr))
@@ -132,7 +132,11 @@ class ToyAccelerator(InstructionSet):
         return self.vector_data(self.tensor_data_array(ptr))
 
     def tensor_copy(self, ptr: int, /, heap_ptr: int) -> int:
-        return self.vector_copy(ptr, heap_ptr=heap_ptr)
+        # Shape is immutable, no need to copy
+        shape = self.tensor_shape_array(ptr)
+        old_data = self.tensor_data_array(ptr)
+        new_data = self.vector_copy(old_data, heap_ptr=heap_ptr)
+        return self.tensor_make(shape, new_data, heap_ptr=heap_ptr)
 
     def tensor_add(self, lhs: int, rhs: int):
         '''lhs += rhs'''
@@ -141,13 +145,10 @@ class ToyAccelerator(InstructionSet):
 
     def tensor_make(self, shape_ptr: int, data_ptr: int, /,
                     heap_ptr: int) -> int:
-        rank = self.vector_count(shape_ptr)
-        count = self.vector_count(data_ptr)
-        storage_len = rank + count + 3
-        result = self.alloc(count, heap_ptr=heap_ptr)
-        self.ptr_write(result, value=storage_len - 1)
-        self.buffer_copy(shape_ptr, self.tensor_shape_array(result), rank + 1)
-        self.buffer_copy(data_ptr, self.tensor_data_array(result), count + 1)
+        result = self.alloc(3, heap_ptr=heap_ptr)
+        self.ptr_write(result, value=2)
+        self.ptr_write(result, value=shape_ptr, offset=1)
+        self.ptr_write(result, value=data_ptr, offset=2)
         return result
 
     # Custom instructions
@@ -188,6 +189,25 @@ class ToyAccelerator(InstructionSet):
 
         d_ptr = self.tensor_copy(l_ptr, heap_ptr=h_ptr)
         self.tensor_add(d_ptr, r_ptr)
+
+        self.set_reg(destination_ptr_reg, d_ptr)
+
+    def instruction_toy_tensor_make(self, ins: Instruction):
+        """
+        This instruction allocates a tensor with the same shape as the inputs, and stores
+        the pointwise sum. No checks about validity of inputs are made.
+        """
+
+        destination_ptr_reg = ins.get_reg(0)
+        shape_ptr_reg = ins.get_reg(1)
+        data_ptr_reg = ins.get_reg(2)
+        heap_ptr_reg = ins.get_reg(3)
+
+        shape_ptr = self.get_reg(shape_ptr_reg)
+        data_ptr = self.get_reg(data_ptr_reg)
+        heap_ptr = self.get_reg(heap_ptr_reg)
+
+        d_ptr = self.tensor_make(shape_ptr, data_ptr, heap_ptr)
 
         self.set_reg(destination_ptr_reg, d_ptr)
 
