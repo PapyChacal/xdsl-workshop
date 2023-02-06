@@ -11,6 +11,10 @@ from toy.dialect import Toy
 from toy.mlir_gen import MLIRGen
 from toy.parser import Parser
 
+from toy.rewrites import (SimplifyRedundantTranspose, RemoveUnusedOperations,
+                          ReshapeReshapeOptPattern,
+                          FoldConstantReshapeOptPattern)
+
 from .accelerator import ToyAccelerator
 
 from .lower_from_toy import (AddSections, LowerFuncOp, LowerReturnOp,
@@ -30,6 +34,18 @@ def parse_toy(program: str, ctx: MLContext | None = None) -> ModuleOp:
 
 def print_module(module: ModuleOp):
     Printer(target=Printer.Target.MLIR).print(module)
+
+
+def optimise_toy(module: ModuleOp) -> ModuleOp:
+    copy = module.clone()
+
+    PatternRewriteWalker(SimplifyRedundantTranspose()).rewrite_module(copy)
+    PatternRewriteWalker(RemoveUnusedOperations()).rewrite_module(copy)
+    PatternRewriteWalker(ReshapeReshapeOptPattern()).rewrite_module(copy)
+    PatternRewriteWalker(FoldConstantReshapeOptPattern()).rewrite_module(copy)
+    PatternRewriteWalker(RemoveUnusedOperations()).rewrite_module(copy)
+
+    return copy
 
 
 def lower_toy(module: ModuleOp) -> ModuleOp:
