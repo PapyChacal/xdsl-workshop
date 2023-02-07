@@ -22,19 +22,6 @@ class TensorPrintOp(Operation):
         return cls.build(operands=[rs1], result_types=[])
 
 
-# Vector Add Op (lhs, rhs, dest)
-# Vector Constant Op
-
-# Tensor Make Op (shape, data, heap)
-# Tensor Get Shape (tensor)
-# Tensor Get Data (tensor)
-
-# Alloc Dynamic (reg, heap)
-# Alloc Static (int, heap)
-
-# Buffer Add Op (count, lhs, rhs, dest)
-
-
 @irdl_op_definition
 class VectorAddOp(Operation):
     name = "riscv.toy.vector.add"
@@ -130,13 +117,10 @@ class AllocOp(Operation):
 
     rd: Annotated[OpResult, RegisterType]
     rs1: Annotated[Operand, RegisterType]
-    rs2: Annotated[Operand, RegisterType]
 
     @classmethod
-    def get(cls, count_reg: Operation | SSAValue,
-            heap_reg: Operation | SSAValue) -> AllocOp:
-        return cls.build(operands=[count_reg, heap_reg],
-                         result_types=[RegisterType()])
+    def get(cls, count_reg: Operation | SSAValue) -> AllocOp:
+        return cls.build(operands=[count_reg], result_types=[RegisterType()])
 
 
 @irdl_op_definition
