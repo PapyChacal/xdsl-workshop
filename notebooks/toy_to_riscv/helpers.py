@@ -21,8 +21,8 @@ from .lower_from_toy import (AddSections, LowerFuncOp, LowerReturnOp,
                              LowerTensorConstantOp, LowerPrintOp,
                              LowerReshapeOp, LowerTensorAddOp,
                              LowerVectorConstantOp, LowerTensorMakeOp,
-                             LowerAllocOp, LowerTensorShapeOp,
-                             LowerTensorDataOp, LowerVectorAddOp)
+                             LowerTensorShapeOp, LowerTensorDataOp,
+                             LowerVectorAddOp)
 
 from .optimise import (SimplifyRedundantShapeAccess,
                        SimplifyRedundantDataAccess)
