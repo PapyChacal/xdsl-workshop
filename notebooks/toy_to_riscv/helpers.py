@@ -25,8 +25,8 @@ from .lower_from_toy import (AddSections, LowerFuncOp, LowerReturnOp,
                              LowerTensorMakeOp, LowerTensorShapeOp,
                              LowerTensorDataOp, LowerVectorAddOp)
 
-from .optimise import (SimplifyRedundantShapeAccess,
-                       SimplifyRedundantDataAccess)
+from vector_ir.rewrites import (SimplifyRedundantShapeAccess,
+                                SimplifyRedundantDataAccess)
 
 
 def parse_toy(program: str, ctx: MLContext | None = None) -> ModuleOp:
