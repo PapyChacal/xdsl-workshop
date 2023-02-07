@@ -5,7 +5,7 @@ from xdsl.dialects.builtin import ModuleOp
 from xdsl.printer import Printer
 from xdsl.pattern_rewriter import PatternRewriteWalker
 
-from riscv.emulator_iop import run_riscv
+from riscv.emulator_iop import run_riscv, print_riscv_ssa
 
 from toy.dialect import Toy
 from toy.mlir_gen import MLIRGen
@@ -91,6 +91,16 @@ def lower_to_riscv(module: ModuleOp) -> ModuleOp:
     PatternRewriteWalker(LowerVectorAddOp()).rewrite_module(copy)
 
     return copy
+
+
+def compile(program: str) -> str:
+    toy_0 = parse_toy(program)
+    toy_1 = optimise_toy(toy_0)
+    vir_0 = lower_from_toy(toy_1)
+    vir_1 = optimise_vir(vir_0)
+    risc_0 = lower_to_riscv(vir_1)
+    code = print_riscv_ssa(risc_0)
+    return code
 
 
 def emulate_riscv(program: str):
