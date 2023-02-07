@@ -92,7 +92,7 @@ class ToyAccelerator(InstructionSet):
 
     # Custom instructions
 
-    def instruction_toy_tensor_print(self, ins: Instruction):
+    def instruction_toy_print(self, ins: Instruction):
         """
         This instruction prints a formatted tensor
         [[1, 2, 3], [4, 5, 6]]
@@ -106,7 +106,7 @@ class ToyAccelerator(InstructionSet):
 
         print(tensor_description(shape, data))
 
-    def instruction_toy_buffer_add(self, ins: Instruction):
+    def instruction_buffer_add(self, ins: Instruction):
 
         c_reg, s_reg, d_reg = [ins.get_reg(i) for i in range(3)]
 
@@ -120,7 +120,7 @@ class ToyAccelerator(InstructionSet):
 
         self.buffer_write(d_ptr, data=[l + r for l, r in zip(s_data, d_data)])
 
-    def instruction_toy_alloc(self, ins: Instruction):
+    def instruction_buffer_alloc(self, ins: Instruction):
         """
         Custom instruction to allocate a buffer of n words in the dedicated space.
         """

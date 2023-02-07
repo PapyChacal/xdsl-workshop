@@ -12,19 +12,8 @@ from riscv.riscv_ssa import RegisterType
 
 
 @irdl_op_definition
-class TensorPrintOp(Operation):
-    name = "riscv.toy.tensor.print"
-
-    rs1: Annotated[Operand, RegisterType]
-
-    @classmethod
-    def get(cls, rs1: Operation | SSAValue) -> TensorPrintOp:
-        return cls.build(operands=[rs1], result_types=[])
-
-
-@irdl_op_definition
 class VectorAddOp(Operation, NoSideEffect):
-    name = "riscv.toy.vector.add"
+    name = "toy.vector.add"
 
     rd: Annotated[OpResult, RegisterType]
     rs1: Annotated[Operand, RegisterType]
@@ -47,7 +36,7 @@ class VectorConstantOp(Operation, NoSideEffect):
       %0 = riscv.toy.vector_constant array<[1, 2, 3, 4, 5, 6]>: array<i32>
     ```
     """
-    name: str = "riscv.toy.vector_constant"
+    name: str = "toy.vector.constant"
     data: OpAttr[ArrayAttr[IntAttr]]
     label: OpAttr[StringAttr]
     res: Annotated[OpResult, RegisterType]
@@ -71,7 +60,7 @@ class VectorConstantOp(Operation, NoSideEffect):
 
 @irdl_op_definition
 class TensorMakeOp(Operation, NoSideEffect):
-    name = "riscv.toy.tensor.make"
+    name = "toy.tensor.make"
 
     rd: Annotated[OpResult, RegisterType]
     rs1: Annotated[Operand, RegisterType]
@@ -86,7 +75,7 @@ class TensorMakeOp(Operation, NoSideEffect):
 
 @irdl_op_definition
 class TensorDataOp(Operation, NoSideEffect):
-    name = "riscv.toy.tensor.data"
+    name = "toy.tensor.data"
 
     rd: Annotated[OpResult, RegisterType]
     rs1: Annotated[Operand, RegisterType]
@@ -98,7 +87,7 @@ class TensorDataOp(Operation, NoSideEffect):
 
 @irdl_op_definition
 class TensorShapeOp(Operation, NoSideEffect):
-    name = "riscv.toy.tensor.shape"
+    name = "toy.tensor.shape"
 
     rd: Annotated[OpResult, RegisterType]
     rs1: Annotated[Operand, RegisterType]
@@ -108,36 +97,9 @@ class TensorShapeOp(Operation, NoSideEffect):
         return cls.build(operands=[tensor_reg], result_types=[RegisterType()])
 
 
-@irdl_op_definition
-class AllocOp(Operation, NoSideEffect):
-    """
-    Allocate a buffer of `count` ints, or `count` * 4 bytes
-    """
-    name = "riscv.toy.alloc"
-
-    rd: Annotated[OpResult, RegisterType]
-    rs1: Annotated[Operand, RegisterType]
-
-    @classmethod
-    def get(cls, count_reg: Operation | SSAValue) -> AllocOp:
-        return cls.build(operands=[count_reg], result_types=[RegisterType()])
-
-
-@irdl_op_definition
-class BufferAddOp(Operation, NoSideEffect):
-    name = "riscv.toy.buffer.add"
-
-    rs1: Annotated[Operand, RegisterType]
-    rs2: Annotated[Operand, RegisterType]
-    rs3: Annotated[Operand, RegisterType]
-
-    @classmethod
-    def get(cls, count_reg: Operation | SSAValue, source: Operation | SSAValue,
-            destination: Operation | SSAValue) -> BufferAddOp:
-        return cls.build(operands=[count_reg, source, destination])
-
-
 ToyRISCV = Dialect([
-    TensorPrintOp, VectorAddOp, TensorMakeOp, TensorDataOp, TensorShapeOp,
-    AllocOp, BufferAddOp
+    VectorAddOp,
+    TensorMakeOp,
+    TensorDataOp,
+    TensorShapeOp,
 ], [])

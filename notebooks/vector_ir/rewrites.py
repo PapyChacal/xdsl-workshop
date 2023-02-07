@@ -2,13 +2,13 @@ from xdsl.ir import OpResult
 from xdsl.pattern_rewriter import (op_type_rewrite_pattern, RewritePattern,
                                    PatternRewriter)
 
-import toy_to_riscv.dialect as trd
+import vector_ir.dialect as tvd
 
 
 class SimplifyRedundantShapeAccess(RewritePattern):
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: trd.TensorShapeOp,
+    def match_and_rewrite(self, op: tvd.TensorShapeOp,
                           rewriter: PatternRewriter):
         """
         Fold tensor(t_shape, t_data).data -> t_data
@@ -20,7 +20,7 @@ class SimplifyRedundantShapeAccess(RewritePattern):
             return
 
         tensor_make_op = tensor_data_input.op
-        if not isinstance(tensor_make_op, trd.TensorMakeOp):
+        if not isinstance(tensor_make_op, tvd.TensorMakeOp):
             # Input defined by a constant passed in? If not, no match.
             return
 
@@ -30,7 +30,7 @@ class SimplifyRedundantShapeAccess(RewritePattern):
 class SimplifyRedundantDataAccess(RewritePattern):
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: trd.TensorDataOp,
+    def match_and_rewrite(self, op: tvd.TensorDataOp,
                           rewriter: PatternRewriter):
         """
         Fold tensor(t_shape, t_data).data -> t_data
@@ -42,7 +42,7 @@ class SimplifyRedundantDataAccess(RewritePattern):
             return
 
         tensor_make_op = tensor_data_input.op
-        if not isinstance(tensor_make_op, trd.TensorMakeOp):
+        if not isinstance(tensor_make_op, tvd.TensorMakeOp):
             # Input defined by a constant passed in? If not, no match.
             return
 

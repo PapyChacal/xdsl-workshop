@@ -15,17 +15,18 @@ from toy.rewrites import (SimplifyRedundantTranspose, RemoveUnusedOperations,
                           ReshapeReshapeOptPattern,
                           FoldConstantReshapeOptPattern)
 
-from .accelerator import ToyAccelerator
+from toy.lowering import (LowerTensorConstantOp, LowerReshapeOp,
+                          LowerTensorAddOp)
 
-from .lower_from_toy import (AddSections, LowerFuncOp, LowerReturnOp,
-                             LowerTensorConstantOp, LowerPrintOp,
-                             LowerReshapeOp, LowerTensorAddOp,
-                             LowerVectorConstantOp, LowerTensorMakeOp,
-                             LowerTensorShapeOp, LowerTensorDataOp,
-                             LowerVectorAddOp)
+from riscv_buffer_ir.accelerator import ToyAccelerator
 
-from .optimise import (SimplifyRedundantShapeAccess,
-                       SimplifyRedundantDataAccess)
+from toy_to_riscv import (AddSections, LowerFuncOp, LowerReturnOp,
+                          LowerPrintOp, LowerVectorConstantOp,
+                          LowerTensorMakeOp, LowerTensorShapeOp,
+                          LowerTensorDataOp, LowerVectorAddOp)
+
+from vector_ir.rewrites import (SimplifyRedundantShapeAccess,
+                                SimplifyRedundantDataAccess)
 
 
 def parse_toy(program: str, ctx: MLContext | None = None) -> ModuleOp:
