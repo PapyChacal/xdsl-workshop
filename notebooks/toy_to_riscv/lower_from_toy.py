@@ -209,19 +209,13 @@ class LowerVectorAddOp(HeapRewritePattern):
 
         rewriter.replace_matched_op([
             count := rd.LWOp.get(op.rs1, 0, 'Get input count'),
-            rd.PrintOp.get(count),
             storage_count := rd.AddIOp.get(count, 4,
                                            'Input storage int32 count'),
-            rd.PrintOp.get(storage_count),
             vector := trd.AllocOp.get(storage_count, heap),
-            rd.PrintOp.get(vector),
             rd.SWOp.get(count, vector, 0, 'Set result count'),
             lhs := rd.AddIOp.get(op.rs1, 4, 'lhs storage'),
-            rd.PrintOp.get(lhs),
             rhs := rd.AddIOp.get(op.rs2, 4, 'lhs storage'),
-            rd.PrintOp.get(rhs),
             dest := rd.AddIOp.get(vector, 4, 'destination storage'),
-            rd.PrintOp.get(dest),
             trd.BufferAddOp.get(count, lhs, dest),
             trd.BufferAddOp.get(count, rhs, dest),
         ], [vector.rd])
@@ -245,11 +239,8 @@ class LowerTensorMakeOp(HeapRewritePattern):
         rewriter.replace_matched_op([
             tensor_storage_len_op,
             tensor_op,
-            rd.PrintOp.get(tensor_op),
-            rd.PrintOp.get(shape),
             tensor_set_shape_op,
             bla := rd.LWOp.get(tensor_op, 0),
-            rd.PrintOp.get(bla),
             tensor_set_data_op,
         ], [tensor_op.rd])
 
@@ -277,20 +268,14 @@ class LowerAllocOp(HeapRewritePattern):
         heap_ptr = self.heap_address(op)
 
         rewriter.replace_matched_op([
-            rd.PrintOp.get(op.rs1),
             four := rd.LIOp.get(4, '4 bytes per int'),
             count := rd.MULOp.get(op.rs1, four, 'Alloc count bytes'),
-            rd.PrintOp.get(count),
             old_heap_count := rd.LWOp.get(heap_ptr, 0, 'Old heap count'),
-            rd.PrintOp.get(old_heap_count),
             new_heap_count := rd.AddOp.get(old_heap_count, count,
                                            'New heap count'),
-            rd.PrintOp.get(new_heap_count),
             rd.SWOp.get(new_heap_count, heap_ptr, 0, 'Update heap'),
             heap_storage_start := rd.AddIOp.get(heap_ptr, 4,
                                                 'Heap storage start'),
-            rd.PrintOp.get(heap_storage_start),
             result := rd.AddOp.get(heap_storage_start, old_heap_count,
                                    'Allocated memory'),
-            rd.PrintOp.get(result),
         ], [result.rd])
