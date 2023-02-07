@@ -15,14 +15,15 @@ from toy.rewrites import (SimplifyRedundantTranspose, RemoveUnusedOperations,
                           ReshapeReshapeOptPattern,
                           FoldConstantReshapeOptPattern)
 
+from toy.lowering import (LowerTensorConstantOp, LowerReshapeOp,
+                          LowerTensorAddOp)
+
 from .accelerator import ToyAccelerator
 
 from .lower_from_toy import (AddSections, LowerFuncOp, LowerReturnOp,
-                             LowerTensorConstantOp, LowerPrintOp,
-                             LowerReshapeOp, LowerTensorAddOp,
-                             LowerVectorConstantOp, LowerTensorMakeOp,
-                             LowerTensorShapeOp, LowerTensorDataOp,
-                             LowerVectorAddOp)
+                             LowerPrintOp, LowerVectorConstantOp,
+                             LowerTensorMakeOp, LowerTensorShapeOp,
+                             LowerTensorDataOp, LowerVectorAddOp)
 
 from .optimise import (SimplifyRedundantShapeAccess,
                        SimplifyRedundantDataAccess)
