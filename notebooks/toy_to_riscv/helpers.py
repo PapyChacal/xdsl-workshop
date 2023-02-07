@@ -24,6 +24,9 @@ from .lower_from_toy import (AddSections, LowerFuncOp, LowerReturnOp,
                              LowerAllocOp, LowerTensorShapeOp,
                              LowerTensorDataOp, LowerVectorAddOp)
 
+from .optimise import (SimplifyRedundantShapeAccess,
+                       SimplifyRedundantDataAccess)
+
 
 def parse_toy(program: str, ctx: MLContext | None = None) -> ModuleOp:
     if ctx is None:
@@ -58,6 +61,16 @@ def lower_from_toy(module: ModuleOp) -> ModuleOp:
     PatternRewriteWalker(LowerReshapeOp()).rewrite_module(copy)
     PatternRewriteWalker(LowerTensorAddOp()).rewrite_module(copy)
     PatternRewriteWalker(LowerTensorAddOp()).rewrite_module(copy)
+
+    return copy
+
+
+def optimise_vir(module: ModuleOp) -> ModuleOp:
+    copy = module.clone()
+
+    PatternRewriteWalker(SimplifyRedundantShapeAccess()).rewrite_module(copy)
+    PatternRewriteWalker(SimplifyRedundantDataAccess()).rewrite_module(copy)
+    PatternRewriteWalker(RemoveUnusedOperations()).rewrite_module(copy)
 
     return copy
 

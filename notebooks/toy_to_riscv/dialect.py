@@ -23,7 +23,7 @@ class TensorPrintOp(Operation):
 
 
 @irdl_op_definition
-class VectorAddOp(Operation):
+class VectorAddOp(Operation, NoSideEffect):
     name = "riscv.toy.vector.add"
 
     rd: Annotated[OpResult, RegisterType]
@@ -70,7 +70,7 @@ class VectorConstantOp(Operation, NoSideEffect):
 
 
 @irdl_op_definition
-class TensorMakeOp(Operation):
+class TensorMakeOp(Operation, NoSideEffect):
     name = "riscv.toy.tensor.make"
 
     rd: Annotated[OpResult, RegisterType]
@@ -85,7 +85,7 @@ class TensorMakeOp(Operation):
 
 
 @irdl_op_definition
-class TensorDataOp(Operation):
+class TensorDataOp(Operation, NoSideEffect):
     name = "riscv.toy.tensor.data"
 
     rd: Annotated[OpResult, RegisterType]
@@ -97,7 +97,7 @@ class TensorDataOp(Operation):
 
 
 @irdl_op_definition
-class TensorShapeOp(Operation):
+class TensorShapeOp(Operation, NoSideEffect):
     name = "riscv.toy.tensor.shape"
 
     rd: Annotated[OpResult, RegisterType]
@@ -109,7 +109,7 @@ class TensorShapeOp(Operation):
 
 
 @irdl_op_definition
-class AllocOp(Operation):
+class AllocOp(Operation, NoSideEffect):
     """
     Allocate a buffer of `count` ints, or `count` * 4 bytes
     """
@@ -124,7 +124,7 @@ class AllocOp(Operation):
 
 
 @irdl_op_definition
-class BufferAddOp(Operation):
+class BufferAddOp(Operation, NoSideEffect):
     name = "riscv.toy.buffer.add"
 
     rs1: Annotated[Operand, RegisterType]
