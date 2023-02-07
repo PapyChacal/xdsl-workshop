@@ -197,7 +197,7 @@ class LowerVectorAddOp(RewritePattern):
 
         rewriter.replace_matched_op([
             count := rd.LWOp.get(op.rs1, 0, 'Get input count'),
-            storage_count := rd.AddIOp.get(count, 4,
+            storage_count := rd.AddIOp.get(count, 1,
                                            'Input storage int32 count'),
             vector := trd.AllocOp.get(storage_count),
             rd.SWOp.get(count, vector, 0, 'Set result count'),
@@ -246,31 +246,3 @@ class LowerTensorDataOp(RewritePattern):
     def match_and_rewrite(self, op: trd.TensorDataOp,
                           rewriter: PatternRewriter):
         rewriter.replace_matched_op(rd.LWOp.get(op.rs1, 4, 'Get tensor data'))
-
-
-class LowerAllocOp(RewritePattern):
-
-    def heap_address(self, op: Operation) -> SSAValue:
-        block = op.parent_block()
-        assert block is not None
-        heap_op = block.ops[0]
-        # TODO: check that this is indeed the heap op
-        # assert isinstance(heap_op, rd.LIOp) and isinstance(heap_op.immediate, rd.LabelAttr)
-        return heap_op.results[0]
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: trd.AllocOp, rewriter: PatternRewriter):
-        heap_ptr = self.heap_address(op)
-
-        rewriter.replace_matched_op([
-            four := rd.LIOp.get(4, '4 bytes per int'),
-            count := rd.MULOp.get(op.rs1, four, 'Alloc count bytes'),
-            old_heap_count := rd.LWOp.get(heap_ptr, 0, 'Old heap count'),
-            new_heap_count := rd.AddOp.get(old_heap_count, count,
-                                           'New heap count'),
-            rd.SWOp.get(new_heap_count, heap_ptr, 0, 'Update heap'),
-            heap_storage_start := rd.AddIOp.get(heap_ptr, 4,
-                                                'Heap storage start'),
-            result := rd.AddOp.get(heap_storage_start, old_heap_count,
-                                   'Allocated memory'),
-        ], [result.rd])

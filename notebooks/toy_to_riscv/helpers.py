@@ -89,8 +89,6 @@ def lower_to_riscv(module: ModuleOp) -> ModuleOp:
     PatternRewriteWalker(LowerTensorDataOp()).rewrite_module(copy)
     PatternRewriteWalker(LowerVectorAddOp()).rewrite_module(copy)
 
-    PatternRewriteWalker(LowerAllocOp()).rewrite_module(copy)
-
     return copy
 
 

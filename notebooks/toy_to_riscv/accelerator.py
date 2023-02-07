@@ -119,3 +119,34 @@ class ToyAccelerator(InstructionSet):
         d_data = self.buffer_read(d_ptr, count)
 
         self.buffer_write(d_ptr, data=[l + r for l, r in zip(s_data, d_data)])
+
+    def instruction_toy_alloc(self, ins: Instruction):
+        """
+        Custom instruction to allocate a buffer of n words in the dedicated space.
+        """
+
+        destination_ptr_reg = ins.get_reg(0)
+        count_reg = ins.get_reg(1)
+
+        count = self.get_reg(count_reg)
+
+        # Magic value of the start of the address space
+        # The .bss instruction is the first one inserted in the code, and
+        # 'heap' is the first label, so this will point to the start of the
+        # address space.
+        heap_ptr = 0x100
+
+        # The first word of the heap contains the size in words of the used space
+        heap_count = self.ptr_read(heap_ptr)
+
+        # The second word of the heap is the start of the allocated space
+        heap_start = heap_ptr + 4
+
+        # The first element past the end of the allocated space
+        result_ptr = heap_start + heap_count * 4
+
+        # Update the allocates space counter
+        new_heap_count = heap_count + count
+        self.ptr_write(heap_ptr, value=new_heap_count)
+
+        self.set_reg(destination_ptr_reg, result_ptr)
