@@ -68,43 +68,14 @@ class ToyAccelerator(InstructionSet):
         count = self.vector_count(ptr)
         return self.buffer_read(ptr, count, offset=1)
 
-    def vector_end(self, ptr: int) -> int:
-        return ptr + (1 + self.ptr_read(ptr)) * 4
-
-    def vector_add(self, lhs: int, rhs: int):
-        '''lhs += rhs'''
-        data = [
-            l + r
-            for (l, r) in zip(self.vector_data(lhs), self.vector_data(rhs))
-        ]
-        self.buffer_write(lhs, data=data, offset=1)
-
-    # Heap helpers
-
-    # The heap pointer is the address of the start of the heap, and contains the count
-    # of remaining allocated elements. Defaults to 0. This means that it can
-    # be used as an append-only vector.
-
-    def alloc(self, count: int, /, heap_ptr: int) -> int:
-        result = self.vector_end(heap_ptr)
-        heap_size = self.vector_count(heap_ptr)
-        self.ptr_write(heap_ptr, value=heap_size + count)
-        return result
-
-    def vector_copy(self, ptr: int, /, heap_ptr: int) -> int:
-        storage_len = self.vector_count(ptr) + 1
-        new = self.alloc(storage_len, heap_ptr=heap_ptr)
-        self.buffer_copy(source=ptr, destination=new, count=storage_len)
-        return new
-
     # Tensor helpers
 
     # The tensor is represented as a vector, containing two pointers to vectors:
     # shape and data
-    # [] -> [2, -> [0], -> [0]] (rank: 0, shape: [], count: 0, data: [])
-    # [1, 2] -> [2, -> [1, 2], -> [2, 1, 2]] (rank: 1, shape: [2], count: 2, data: [1, 2])
+    # [] -> [-> [0], -> [0]] (rank: 0, shape: [], count: 0, data: [])
+    # [1, 2] -> [-> [1, 2], -> [2, 1, 2]] (rank: 1, shape: [2], count: 2, data: [1, 2])
     # [[1, 2, 3], [4, 5, 6]]
-    #   -> [2, -> [2, 2, 3], -> [6, 1, 2, 3, 4, 5, 6]] (
+    #   -> [-> [2, 2, 3], -> [6, 1, 2, 3, 4, 5, 6]] (
     #       rank: 2,
     #       shape: [2, 3],
     #       count: 2,
@@ -113,43 +84,11 @@ class ToyAccelerator(InstructionSet):
 
     # Where rank is the length of the shape subarray, and count is the length of data.
 
-    def tensor_shape_array(self, ptr: int) -> int:
+    def tensor_shape(self, ptr: int) -> int:
         return self.ptr_read(ptr, offset=0)
 
-    def tensor_rank(self, ptr: int) -> int:
-        return self.vector_count(self.tensor_shape_array(ptr))
-
-    def tensor_shape(self, ptr: int) -> list[int]:
-        return self.vector_data(self.tensor_shape_array(ptr))
-
-    def tensor_data_array(self, ptr: int) -> int:
+    def tensor_data(self, ptr: int) -> int:
         return self.ptr_read(ptr, offset=1)
-
-    def tensor_count(self, ptr: int):
-        return self.vector_count(self.tensor_data_array(ptr))
-
-    def tensor_data(self, ptr: int) -> list[int]:
-        return self.vector_data(self.tensor_data_array(ptr))
-
-    def tensor_copy(self, ptr: int, /, heap_ptr: int) -> int:
-        # Shape is immutable, no need to copy
-        shape = self.tensor_shape_array(ptr)
-        old_data = self.tensor_data_array(ptr)
-        new_data = self.vector_copy(old_data, heap_ptr=heap_ptr)
-        return self.tensor_make(shape, new_data, heap_ptr=heap_ptr)
-
-    def tensor_add(self, lhs: int, rhs: int):
-        '''lhs += rhs'''
-        self.vector_add(self.tensor_data_array(lhs),
-                        self.tensor_data_array(rhs))
-
-    def tensor_make(self, shape_ptr: int, data_ptr: int, /,
-                    heap_ptr: int) -> int:
-        result = self.alloc(3, heap_ptr=heap_ptr)
-        self.ptr_write(result, value=2)
-        self.ptr_write(result, value=shape_ptr, offset=1)
-        self.ptr_write(result, value=data_ptr, offset=2)
-        return result
 
     # Custom instructions
 
@@ -162,8 +101,8 @@ class ToyAccelerator(InstructionSet):
         t_ptr_reg = ins.get_reg(0)
         t_ptr = self.get_reg(t_ptr_reg)
 
-        shape = self.tensor_shape(t_ptr)
-        data = self.tensor_data(t_ptr)
+        shape = self.vector_data(self.tensor_shape(t_ptr))
+        data = self.vector_data(self.tensor_data(t_ptr))
 
         print(tensor_description(shape, data))
 
