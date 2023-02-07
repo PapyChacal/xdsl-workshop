@@ -1,13 +1,14 @@
 from collections import Counter
 
-from xdsl.ir import Operation, SSAValue, Block
-from xdsl.dialects.builtin import ModuleOp, UnrankedTensorType, TensorType
+from xdsl.ir import Operation, Block
+from xdsl.dialects.builtin import ModuleOp
 from xdsl.pattern_rewriter import (op_type_rewrite_pattern, RewritePattern,
                                    PatternRewriter)
 
 import toy.dialect as td
 import riscv.riscv_ssa as rd
 import toy_to_riscv.dialect as trd
+import vector_ir.dialect as tvd
 
 
 class AddSections(RewritePattern):
@@ -111,7 +112,7 @@ class DataSectionRewritePattern(RewritePattern):
 class LowerVectorConstantOp(DataSectionRewritePattern):
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: trd.VectorConstantOp,
+    def match_and_rewrite(self, op: tvd.VectorConstantOp,
                           rewriter: PatternRewriter):
         """
         Vectors are represented in memory as an n+1 array of int32, where the first
@@ -134,7 +135,7 @@ class LowerPrintOp(RewritePattern):
 class LowerVectorAddOp(RewritePattern):
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: trd.VectorAddOp,
+    def match_and_rewrite(self, op: tvd.VectorAddOp,
                           rewriter: PatternRewriter):
 
         rewriter.replace_matched_op([
@@ -154,7 +155,7 @@ class LowerVectorAddOp(RewritePattern):
 class LowerTensorMakeOp(RewritePattern):
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: trd.TensorMakeOp,
+    def match_and_rewrite(self, op: tvd.TensorMakeOp,
                           rewriter: PatternRewriter):
         shape = op.rs1
         data = op.rs2
@@ -169,7 +170,7 @@ class LowerTensorMakeOp(RewritePattern):
             tensor_storage_len_op,
             tensor_op,
             tensor_set_shape_op,
-            bla := rd.LWOp.get(tensor_op, 0),
+            rd.LWOp.get(tensor_op, 0),
             tensor_set_data_op,
         ], [tensor_op.rd])
 
@@ -177,7 +178,7 @@ class LowerTensorMakeOp(RewritePattern):
 class LowerTensorShapeOp(RewritePattern):
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: trd.TensorShapeOp,
+    def match_and_rewrite(self, op: tvd.TensorShapeOp,
                           rewriter: PatternRewriter):
         rewriter.replace_matched_op(rd.LWOp.get(op.rs1, 0, 'Get tensor shape'))
 
@@ -185,6 +186,6 @@ class LowerTensorShapeOp(RewritePattern):
 class LowerTensorDataOp(RewritePattern):
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: trd.TensorDataOp,
+    def match_and_rewrite(self, op: tvd.TensorDataOp,
                           rewriter: PatternRewriter):
         rewriter.replace_matched_op(rd.LWOp.get(op.rs1, 4, 'Get tensor data'))

@@ -4,6 +4,7 @@ from xdsl.pattern_rewriter import (op_type_rewrite_pattern, RewritePattern,
 
 import toy.dialect as td
 import toy_to_riscv.dialect as trd
+import vector_ir.dialect as tvd
 
 
 class LowerTensorConstantOp(RewritePattern):
@@ -19,9 +20,9 @@ class LowerTensorConstantOp(RewritePattern):
         shape: list[int] = value_type.get_shape()
         data: list[int] = [int(el.value.data) for el in op.value.data.data]
 
-        shape_vector = trd.VectorConstantOp.get(shape, 'tensor_shape')
-        data_vector = trd.VectorConstantOp.get(data, 'tensor_data')
-        tensor = trd.TensorMakeOp.get(shape_vector, data_vector)
+        shape_vector = tvd.VectorConstantOp.get(shape, 'tensor_shape')
+        data_vector = tvd.VectorConstantOp.get(data, 'tensor_data')
+        tensor = tvd.TensorMakeOp.get(shape_vector, data_vector)
 
         rewriter.replace_matched_op([shape_vector, data_vector, tensor])
 
@@ -47,9 +48,9 @@ class LowerReshapeOp(RewritePattern):
         shape = typ.get_shape()
 
         rewriter.replace_matched_op([
-            new_shape := trd.VectorConstantOp.get(shape, 'tensor_new_shape'),
-            old_data := trd.TensorDataOp.get(op.arg),
-            trd.TensorMakeOp.get(new_shape, old_data)
+            new_shape := tvd.VectorConstantOp.get(shape, 'tensor_new_shape'),
+            old_data := tvd.TensorDataOp.get(op.arg),
+            tvd.TensorMakeOp.get(new_shape, old_data)
         ])
 
 
@@ -57,10 +58,10 @@ class LowerTensorAddOp(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: td.AddOp, rewriter: PatternRewriter):
-        shape = trd.TensorShapeOp.get(op.lhs)
-        lhs = trd.TensorDataOp.get(op.lhs)
-        rhs = trd.TensorDataOp.get(op.rhs)
-        sum = trd.VectorAddOp.get(lhs, rhs)
-        result = trd.TensorMakeOp.get(shape, sum)
+        shape = tvd.TensorShapeOp.get(op.lhs)
+        lhs = tvd.TensorDataOp.get(op.lhs)
+        rhs = tvd.TensorDataOp.get(op.rhs)
+        sum = tvd.VectorAddOp.get(lhs, rhs)
+        result = tvd.TensorMakeOp.get(shape, sum)
 
         rewriter.replace_matched_op([shape, lhs, rhs, sum, result])
