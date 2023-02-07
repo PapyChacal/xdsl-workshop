@@ -3,7 +3,7 @@ from xdsl.pattern_rewriter import (op_type_rewrite_pattern, RewritePattern,
                                    PatternRewriter)
 
 import toy.dialect as td
-import toy_to_riscv.dialect as trd
+import riscv_buffer_ir.dialect as rbd
 import vector_ir.dialect as tvd
 
 
@@ -31,7 +31,7 @@ class LowerPrintOp(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: td.PrintOp, rewriter: PatternRewriter):
-        rewriter.replace_matched_op(trd.TensorPrintOp.get(op.input))
+        rewriter.replace_matched_op(rbd.TensorPrintOp.get(op.input))
 
 
 class LowerReshapeOp(RewritePattern):

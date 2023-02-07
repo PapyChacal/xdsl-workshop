@@ -7,7 +7,7 @@ from io import StringIO
 from typing import Any, List, Type, cast, Generator
 
 from xdsl.ir import Operation
-from xdsl.dialects.builtin import ModuleOp, StringAttr
+from xdsl.dialects.builtin import ModuleOp
 from .riscv_ssa import (FuncOp, SSAValue, LabelAttr, IntegerAttr, DirectiveOp,
                         LabelOp, RiscvNoParamsOperation, ECALLOp, SectionOp,
                         ReturnOp, Riscv2Rs1ImmOperation,

@@ -7,7 +7,7 @@ from xdsl.pattern_rewriter import (op_type_rewrite_pattern, RewritePattern,
 
 import toy.dialect as td
 import riscv.riscv_ssa as rd
-import toy_to_riscv.dialect as trd
+import riscv_buffer_ir.dialect as rbd
 import vector_ir.dialect as tvd
 
 
@@ -129,7 +129,7 @@ class LowerPrintOp(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: td.PrintOp, rewriter: PatternRewriter):
-        rewriter.replace_matched_op(trd.TensorPrintOp.get(op.input))
+        rewriter.replace_matched_op(rbd.TensorPrintOp.get(op.input))
 
 
 class LowerVectorAddOp(RewritePattern):
@@ -142,13 +142,13 @@ class LowerVectorAddOp(RewritePattern):
             count := rd.LWOp.get(op.rs1, 0, 'Get input count'),
             storage_count := rd.AddIOp.get(count, 1,
                                            'Input storage int32 count'),
-            vector := trd.AllocOp.get(storage_count),
+            vector := rbd.AllocOp.get(storage_count),
             rd.SWOp.get(count, vector, 0, 'Set result count'),
             lhs := rd.AddIOp.get(op.rs1, 4, 'lhs storage'),
             rhs := rd.AddIOp.get(op.rs2, 4, 'lhs storage'),
             dest := rd.AddIOp.get(vector, 4, 'destination storage'),
-            trd.BufferAddOp.get(count, lhs, dest),
-            trd.BufferAddOp.get(count, rhs, dest),
+            rbd.BufferAddOp.get(count, lhs, dest),
+            rbd.BufferAddOp.get(count, rhs, dest),
         ], [vector.rd])
 
 
@@ -161,7 +161,7 @@ class LowerTensorMakeOp(RewritePattern):
         data = op.rs2
 
         tensor_storage_len_op = rd.LIOp.get(2, 'Tensor storage')
-        tensor_op = trd.AllocOp.get(tensor_storage_len_op)
+        tensor_op = rbd.AllocOp.get(tensor_storage_len_op)
         tensor_set_shape_op = rd.SWOp.get(shape, tensor_op, 0,
                                           'Set tensor shape')
         tensor_set_data_op = rd.SWOp.get(data, tensor_op, 4, 'Set tensor data')

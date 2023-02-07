@@ -18,7 +18,7 @@ from toy.rewrites import (SimplifyRedundantTranspose, RemoveUnusedOperations,
 from toy.lowering import (LowerTensorConstantOp, LowerReshapeOp,
                           LowerTensorAddOp)
 
-from .accelerator import ToyAccelerator
+from riscv_buffer_ir.accelerator import ToyAccelerator
 
 from .lower_from_toy import (AddSections, LowerFuncOp, LowerReturnOp,
                              LowerPrintOp, LowerVectorConstantOp,
