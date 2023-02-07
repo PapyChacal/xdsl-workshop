@@ -1,11 +1,17 @@
+from __future__ import annotations
+
 from riscemu import RunConfig, UserModeCPU, RV32I, RV32M, AssemblyFileLoader
 from riscemu.instructions import InstructionSet, Instruction
 
 from io import StringIO
-from typing import Any, List, Type, cast
-from xdsl.dialects.builtin import ModuleOp
-from .riscv_ssa import (SSAValue, LabelAttr, IntegerAttr, DirectiveOp, LabelOp,
-                        RiscvNoParamsOperation, ECALLOp)
+from typing import Any, List, Type, cast, Generator
+
+from xdsl.ir import Operation
+from xdsl.dialects.builtin import ModuleOp, StringAttr
+from .riscv_ssa import (FuncOp, SSAValue, LabelAttr, IntegerAttr, DirectiveOp,
+                        LabelOp, RiscvNoParamsOperation, ECALLOp, SectionOp,
+                        ReturnOp, Riscv2Rs1ImmOperation,
+                        Riscv1Rd1Rs1ImmOperation, Riscv1Rd2RsOperation)
 
 SCALL_EXIT = 93
 
@@ -34,9 +40,25 @@ class _SSAVALNamer:
         return str('%' + str(self.ssa_val_names[reg]))
 
 
-def print_riscv_ssa(module: ModuleOp):
+def riscv_ops(module: ModuleOp) -> Generator[Operation, None, None]:
+    for op in module.body.blocks[0].ops:
+        assert isinstance(op, SectionOp)
+        yield DirectiveOp.get(op.directive, '')
+        for op in op.data.blocks[0].ops:
+            if isinstance(op, FuncOp):
+                yield LabelOp.get(op.func_name.data)
+                yield from op.func_body.blocks[0].ops
+                if op.func_name.data == 'main':
+                    # Exit syscall at the end of 'main'
+                    yield ECALLOp.get(SCALL_EXIT)
+            else:
+                yield op
+
+
+def print_riscv_ssa(module: ModuleOp, memory: int = 1024) -> str:
+    ops = list(riscv_ops(module))
+
     out = ""
-    has_region_definitions = False
     reg = _SSAVALNamer()
 
     def get_all_regs(op):
@@ -53,12 +75,10 @@ def print_riscv_ssa(module: ModuleOp):
                 else:
                     yield val.data
 
-    for op in module.regions[0].ops:
+    for op in ops:
         name = '.'.join(op.name.split(".")[1:])
         if isinstance(op, DirectiveOp):
             out += "{} {}".format(op.directive.data, op.value.data)
-            if op.directive.data.startswith("."):
-                has_region_definitions = True
         elif isinstance(op, LabelOp):
             out += "{}:".format(op.label.data)
         elif isinstance(op, RiscvNoParamsOperation):
@@ -72,12 +92,20 @@ def print_riscv_ssa(module: ModuleOp):
             out += '\tscall'
             if op.result and len(op.result.uses) > 0:
                 out += '\n\tmv\t{}, a0'.format(reg.get_ssa_name(op.result))
+        elif isinstance(op, ReturnOp):
+            # don't print return ops
+            continue
         else:
             out += "\t{}\t{}".format(name, ", ".join(get_all_regs(op)))
 
+        if isinstance(
+                op, Riscv2Rs1ImmOperation
+                | Riscv1Rd1Rs1ImmOperation
+                | Riscv1Rd2RsOperation) and op.comment is not None:
+            out += f'\t\t# {op.comment.data}'
+
         out += "\n"
-    if not has_region_definitions:
-        out = ".text\n" + out
+
     return out
 
 

@@ -72,22 +72,24 @@ class AddOp(Operation, NoSideEffect):
     The shapes of the tensor operands are expected to match.
     """
     name: str = 'toy.add'
-    arguments: Annotated[VarOperand, AnyTensorTypeI32]
+    lhs: Annotated[Operand, AnyTensorTypeI32]
+    rhs: Annotated[Operand, AnyTensorTypeI32]
     res: Annotated[OpResult, AnyTensorTypeI32]
 
     @classmethod
     def from_summands(cls: type[AddOp], lhs: SSAValue, rhs: SSAValue) -> AddOp:
         assert isinstance(lhs.typ, TensorType | UnrankedTensorType)
-        element_type = cast(IntegerType,
-                            cast(TensorType[Any], lhs.typ).element_type)
-        return cls.create(result_types=[element_type], operands=[lhs, rhs])
+        if isinstance(lhs.typ, TensorType):
+            result_typ = cast(TensorType[Any], lhs.typ)
+        else:
+            result_typ = rhs.typ
+        return cls.create(result_types=[result_typ], operands=[lhs, rhs])
 
     def verify_(self):
-        if not len(self.arguments):
-            raise VerifyException("Expected AddOp args to not be empty")
+        args = [self.lhs, self.rhs]
 
         shape = None
-        for arg in self.arguments:
+        for arg in args:
             # Expect shapes to be the same whenever they are defined, no check for unranked
             if isinstance(arg.typ, TensorType):
                 if shape is None:
@@ -213,19 +215,23 @@ class MulOp(Operation, NoSideEffect):
     tensors. The shapes of the tensor operands are expected to match.
     """
     name: str = 'toy.mul'
-    arguments: Annotated[VarOperand, AnyTensorTypeI32]
+    lhs: Annotated[Operand, AnyTensorTypeI32]
+    rhs: Annotated[Operand, AnyTensorTypeI32]
     res: Annotated[OpResult, AnyTensorTypeI32]
 
     @classmethod
     def from_summands(cls: type[MulOp], lhs: SSAValue, rhs: SSAValue) -> MulOp:
-        return cls.create(result_types=[lhs.typ], operands=[lhs, rhs])
+        if isinstance(lhs.typ, TensorType):
+            result_typ = cast(TensorType[Any], lhs.typ)
+        else:
+            result_typ = rhs.typ
+        return cls.create(result_types=[result_typ], operands=[lhs, rhs])
 
     def verify_(self):
-        if not len(self.arguments):
-            raise VerifyException("Expected MulOp args to not be empty")
+        args = [self.lhs, self.rhs]
 
         shape = None
-        for arg in self.arguments:
+        for arg in args:
             # Expect shapes to be the same whenever they are defined, no check for unranked
             if isinstance(arg.typ, TensorType):
                 if shape is None:
@@ -243,7 +249,7 @@ class PrintOp(Operation):
     no results.
     """
     name: str = 'toy.print'
-    arguments: Annotated[VarOperand, AnyAttr()]
+    input: Annotated[Operand, AnyAttr()]
 
     @classmethod
     def from_input(cls: type[PrintOp], input: SSAValue) -> PrintOp:

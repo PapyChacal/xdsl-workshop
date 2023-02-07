@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Type, Dict, Union, Optional, Any, List, TypeVar, Annotated, TypeAlias
+from typing import Type, Dict, Union, Optional, Any, List, TypeVar, Annotated
 
 from xdsl.ir import (Operation, ParametrizedAttribute, SSAValue, Dialect,
-                     Attribute, Data, OpResult)
+                     Attribute, Data, OpResult, Region)
 
 from xdsl.irdl import (irdl_op_definition, irdl_attr_definition, OptOpResult,
-                       VarOperand, AnyOf, SingleBlockRegion, OpAttr, OptOpAttr,
+                       VarOperand, SingleBlockRegion, OpAttr, OptOpAttr,
                        OptOperand, builder, Operand)
 from xdsl.dialects.builtin import StringAttr, IntegerAttr, AnyIntegerAttr
+from xdsl.utils.exceptions import VerifyException
 
 from xdsl.parser import BaseParser
 from xdsl.printer import Printer
@@ -136,7 +137,7 @@ class RegisterType(ParametrizedAttribute):
 class Riscv1Rd1Rs1ImmOperation(Operation):
     rd: Annotated[OpResult, RegisterType]
     rs1: Annotated[Operand, RegisterType]
-    immediate: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    immediate: OpAttr[AnyIntegerAttr | LabelAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -162,7 +163,7 @@ class Riscv1Rd1Rs1ImmOperation(Operation):
 class Riscv2Rs1ImmOperation(Operation):
     rs1: Annotated[Operand, RegisterType]
     rs2: Annotated[Operand, RegisterType]
-    immediate: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    immediate: OpAttr[AnyIntegerAttr | LabelAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -187,7 +188,7 @@ class Riscv2Rs1ImmOperation(Operation):
 class Riscv2Rs1OffOperation(Operation):
     rs1: Annotated[Operand, RegisterType]
     rs2: Annotated[Operand, RegisterType]
-    offset: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    offset: OpAttr[AnyIntegerAttr | LabelAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -232,7 +233,7 @@ class Riscv1Rd2RsOperation(Operation):
 class Riscv1Rs1Rt1OffOperation(Operation):
     rs: Annotated[OpResult, RegisterType]
     rt: Annotated[Operand, RegisterType]
-    offset: OpAttr[IntegerAttr]
+    offset: OpAttr[AnyIntegerAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -252,7 +253,7 @@ class Riscv1Rs1Rt1OffOperation(Operation):
 
 
 class Riscv1OffOperation(Operation):
-    offset: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    offset: OpAttr[AnyIntegerAttr | LabelAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -274,7 +275,7 @@ class Riscv1OffOperation(Operation):
 
 class Riscv1Rd1ImmOperation(Operation):
     rd: Annotated[OpResult, RegisterType]
-    immediate: OpAttr[AnyOf([IntegerAttr, LabelAttr])]
+    immediate: OpAttr[AnyIntegerAttr | LabelAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -296,7 +297,7 @@ class Riscv1Rd1ImmOperation(Operation):
 
 class Riscv1Rd1OffOperation(Operation):
     rd: Annotated[OpResult, RegisterType]
-    offset: OpAttr[IntegerAttr]
+    offset: OpAttr[AnyIntegerAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -316,7 +317,7 @@ class Riscv1Rd1OffOperation(Operation):
 
 class Riscv1Rs1OffOperation(Operation):
     rs: Annotated[Operand, RegisterType]
-    offset: OpAttr[IntegerAttr]
+    offset: OpAttr[AnyIntegerAttr]
     comment: OptOpAttr[StringAttr]
 
     @classmethod
@@ -588,7 +589,7 @@ class JALROp(Riscv1Rd1Rs1ImmOperation):
 class ECALLOp(Operation):
     name = "riscv_ssa.ecall"
     args: Annotated[VarOperand, RegisterType]
-    syscall_num: OpAttr[IntegerAttr]
+    syscall_num: OpAttr[AnyIntegerAttr]
     result: Annotated[OptOpResult, RegisterType]
     """
     Some syscalls return values by putting them into a0. The result register will represent a0.
@@ -734,6 +735,58 @@ class FuncOp(Operation):
     func_name: OpAttr[StringAttr]
     func_body: SingleBlockRegion
 
+    @staticmethod
+    def from_region(name: str, region: Region) -> FuncOp:
+        attributes: dict[str, Attribute] = {
+            "func_name": StringAttr.from_str(name)
+        }
+
+        return FuncOp.create(attributes=attributes, regions=[region])
+
+    @staticmethod
+    def from_ops(name: str, ops: list[Operation]) -> FuncOp:
+        region = Region.from_operation_list(ops)
+        return FuncOp.from_region(name, region)
+
+    def verify_(self):
+        # Check that the returned value matches the type of the function
+        if len(self.func_body.blocks) != 1:
+            raise VerifyException("Expected FuncOp to contain one block")
+
+        block = self.func_body.blocks[0]
+
+        if not len(block.ops):
+            raise VerifyException("Expected FuncOp to not be empty")
+
+        last_op = block.ops[-1]
+
+        if not isinstance(last_op, ReturnOp):
+            raise VerifyException(
+                "Expected last op of FuncOp to be a ReturnOp")
+
+        # Sasha: the following is copy/pasted code from the Toy dialect that checks
+        # whether the type of the function matches the return. But the riscv FuncOp
+        # doesn't have a function type, so I'm not sure whether one needs to be added,
+        # or the ReturnOp needs to lose its operand.
+
+        # operand = last_op.value
+        # operand_typ = None if operand is None else operand.typ
+
+        # return_typs = self.function_type.outputs.data
+
+        # if len(return_typs):
+        #     if len(return_typs) == 1:
+        #         return_typ = return_typs[0]
+        #     else:
+        #         raise VerifyException(
+        #             "Expected return type of func to have 0 or 1 values")
+        # else:
+        #     return_typ = None
+
+        # if operand_typ != return_typ:
+        #     raise VerifyException(
+        #         "Expected return value to match return type of function")
+
 
 @irdl_op_definition
 class ReturnOp(Operation):
@@ -743,7 +796,7 @@ class ReturnOp(Operation):
     @classmethod
     def get(cls: Type[Op],
             value: Optional[Union[Operation, SSAValue]] = None) -> Op:
-        operands = [] if value is None else [value]
+        operands = [[]] if value is None else [value]
         return cls.build(operands=operands)
 
 
@@ -761,12 +814,38 @@ class PrintOp(Operation):
         return cls.build(operands=[reg])
 
 
+@irdl_op_definition
+class SectionOp(Operation):
+    '''
+    This instruction corresponds to a section. Its block can be added to during 
+    the lowering process.
+    '''
+    name = 'riscv.section'
+
+    directive: OpAttr[StringAttr]
+    data: SingleBlockRegion
+
+    @staticmethod
+    def from_region(directive: str | StringAttr, region: Region) -> SectionOp:
+        if isinstance(directive, str):
+            directive = StringAttr.from_str(directive)
+        return SectionOp.create(attributes={'directive': directive},
+                                regions=[region])
+
+    @staticmethod
+    def from_ops(directive: str | StringAttr,
+                 ops: list[Operation]) -> SectionOp:
+        region = Region.from_operation_list(ops)
+        return SectionOp.from_region(directive, region)
+
+
 riscv_ssa_attrs: List[Type[Attribute]] = [RegisterType]
 riscv_ssa_ops: List[Type[Operation]] = [
     LBOp, LBUOp, LHOp, LHUOp, LWOp, SBOp, SHOp, SWOp, BEQOp, BNEOp, BLTOp,
     BGEOp, BLTUOp, BGEUOp, AddOp, AddIOp, SubOp, LUIOp, LIOp, AUIPCOp, XOROp,
     XORIOp, OROp, ORIOp, ANDOp, ANDIOp, SLTOp, SLTIOp, SLTUOp, SLTIUOp, JOp,
     JALOp, JALROp, ECALLOp, EBREAKOp, MULOp, MULHOp, MULHSUOp, MULHUOp, DIVOp,
-    DIVUOp, REMOp, REMUOp, LabelOp, CallOp, AllocOp, FuncOp, ReturnOp
+    DIVUOp, REMOp, REMUOp, LabelOp, CallOp, AllocOp, FuncOp, ReturnOp,
+    SectionOp
 ]
 RISCVSSA = Dialect(riscv_ssa_ops, riscv_ssa_attrs)
