@@ -20,10 +20,11 @@ from toy.lowering import (LowerTensorConstantOp, LowerReshapeOp,
 
 from riscv_buffer_ir.accelerator import ToyAccelerator
 
-from .lower_from_toy import (AddSections, LowerFuncOp, LowerReturnOp,
-                             LowerPrintOp, LowerVectorConstantOp,
-                             LowerTensorMakeOp, LowerTensorShapeOp,
-                             LowerTensorDataOp, LowerVectorAddOp)
+from toy_to_riscv.lower_from_toy import (AddSections, LowerFuncOp,
+                                         LowerReturnOp, LowerPrintOp,
+                                         LowerVectorConstantOp,
+                                         LowerTensorMakeOp, LowerTensorShapeOp,
+                                         LowerTensorDataOp, LowerVectorAddOp)
 
 from vector_ir.rewrites import (SimplifyRedundantShapeAccess,
                                 SimplifyRedundantDataAccess)
