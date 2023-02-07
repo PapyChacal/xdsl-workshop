@@ -18,8 +18,11 @@ from toy.rewrites import (SimplifyRedundantTranspose, RemoveUnusedOperations,
 from .accelerator import ToyAccelerator
 
 from .lower_from_toy import (AddSections, LowerFuncOp, LowerReturnOp,
-                             LowerConstantOp, LowerPrintOp, LowerReshapeOp,
-                             LowerAddOp)
+                             LowerTensorConstantOp, LowerPrintOp,
+                             LowerReshapeOp, LowerTensorAddOp,
+                             LowerVectorConstantOp, LowerTensorMakeOp,
+                             LowerAllocOp, LowerTensorShapeOp,
+                             LowerTensorDataOp, LowerVectorAddOp)
 
 
 def parse_toy(program: str, ctx: MLContext | None = None) -> ModuleOp:
@@ -48,16 +51,32 @@ def optimise_toy(module: ModuleOp) -> ModuleOp:
     return copy
 
 
-def lower_toy(module: ModuleOp) -> ModuleOp:
+def lower_from_toy(module: ModuleOp) -> ModuleOp:
+    copy = module.clone()
+
+    PatternRewriteWalker(LowerTensorConstantOp()).rewrite_module(copy)
+    PatternRewriteWalker(LowerReshapeOp()).rewrite_module(copy)
+    PatternRewriteWalker(LowerTensorAddOp()).rewrite_module(copy)
+    PatternRewriteWalker(LowerTensorAddOp()).rewrite_module(copy)
+
+    return copy
+
+
+def lower_to_riscv(module: ModuleOp) -> ModuleOp:
     copy = module.clone()
 
     PatternRewriteWalker(AddSections()).rewrite_module(copy)
     PatternRewriteWalker(LowerFuncOp()).rewrite_module(copy)
     PatternRewriteWalker(LowerReturnOp()).rewrite_module(copy)
-    PatternRewriteWalker(LowerConstantOp()).rewrite_module(copy)
     PatternRewriteWalker(LowerPrintOp()).rewrite_module(copy)
-    PatternRewriteWalker(LowerReshapeOp()).rewrite_module(copy)
-    PatternRewriteWalker(LowerAddOp()).rewrite_module(copy)
+
+    PatternRewriteWalker(LowerVectorConstantOp()).rewrite_module(copy)
+    PatternRewriteWalker(LowerTensorMakeOp()).rewrite_module(copy)
+    PatternRewriteWalker(LowerTensorShapeOp()).rewrite_module(copy)
+    PatternRewriteWalker(LowerTensorDataOp()).rewrite_module(copy)
+    PatternRewriteWalker(LowerVectorAddOp()).rewrite_module(copy)
+
+    # PatternRewriteWalker(LowerAllocOp()).rewrite_module(copy)
 
     return copy
 

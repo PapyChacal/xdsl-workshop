@@ -114,7 +114,7 @@ class ToyAccelerator(InstructionSet):
     # Where rank is the length of the shape subarray, and count is the length of data.
 
     def tensor_shape_array(self, ptr: int) -> int:
-        return self.ptr_read(ptr, offset=1)
+        return self.ptr_read(ptr, offset=0)
 
     def tensor_rank(self, ptr: int) -> int:
         return self.vector_count(self.tensor_shape_array(ptr))
@@ -123,7 +123,7 @@ class ToyAccelerator(InstructionSet):
         return self.vector_data(self.tensor_shape_array(ptr))
 
     def tensor_data_array(self, ptr: int) -> int:
-        return self.ptr_read(ptr, offset=2)
+        return self.ptr_read(ptr, offset=1)
 
     def tensor_count(self, ptr: int):
         return self.vector_count(self.tensor_data_array(ptr))
@@ -153,7 +153,7 @@ class ToyAccelerator(InstructionSet):
 
     # Custom instructions
 
-    def instruction_toy_print_tensor(self, ins: Instruction):
+    def instruction_toy_tensor_print(self, ins: Instruction):
         """
         This instruction prints a formatted tensor
         [[1, 2, 3], [4, 5, 6]]
@@ -247,3 +247,17 @@ class ToyAccelerator(InstructionSet):
         d_ptr = self.alloc(size, heap_ptr=heap_ptr)
 
         self.set_reg(destination_ptr_reg, d_ptr)
+
+    def instruction_toy_buffer_add(self, ins: Instruction):
+
+        c_reg, s_reg, d_reg = [ins.get_reg(i) for i in range(3)]
+
+        count = self.get_reg(c_reg)
+
+        s_ptr = self.get_reg(s_reg)
+        d_ptr = self.get_reg(d_reg)
+
+        s_data = self.buffer_read(s_ptr, count)
+        d_data = self.buffer_read(d_ptr, count)
+
+        self.buffer_write(d_ptr, data=[l + r for l, r in zip(s_data, d_data)])

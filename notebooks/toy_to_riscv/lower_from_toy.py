@@ -119,7 +119,7 @@ class HeapRewritePattern(RewritePattern):
         return heap_op.results[0]
 
 
-class LowerConstantOp(DataSectionRewritePattern, HeapRewritePattern):
+class LowerTensorConstantOp(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: td.ConstantOp, rewriter: PatternRewriter):
@@ -132,36 +132,27 @@ class LowerConstantOp(DataSectionRewritePattern, HeapRewritePattern):
         shape: list[int] = value_type.get_shape()
         data: list[int] = [int(el.value.data) for el in op.value.data.data]
 
-        shape_label = self.label(self.func_name_of_op(op), 'tensor_shape')
-        data_label = self.label(self.func_name_of_op(op), 'tensor_data')
+        shape_vector = trd.VectorConstantOp.get(shape, 'tensor_shape')
+        data_vector = trd.VectorConstantOp.get(data, 'tensor_data')
+        tensor = trd.TensorMakeOp.get(shape_vector, data_vector)
 
-        self.add_data(op, shape_label, [len(shape), *shape])
-        self.add_data(op, data_label, [len(data), *data])
+        rewriter.replace_matched_op([shape_vector, data_vector, tensor])
 
-        heap_op = self.heap_address(op)
 
-        shape_op = rd.LIOp.get(shape_label)
-        data_op = rd.LIOp.get(data_label)
-        alloc_len_op = rd.LIOp.get(3)
-        tensor_op = trd.AllocOp.get(alloc_len_op, heap_op)
-        tensor_len_op = rd.LIOp.get(2)
-        tensor_set_len_op = rd.SWOp.get(tensor_len_op, tensor_op, 0,
-                                        'Set tensor storage count')
-        tensor_set_shape_op = rd.SWOp.get(shape_op, tensor_op, 4,
-                                          'Set tensor shape')
-        tensor_set_data_op = rd.SWOp.get(data_op, tensor_op, 8,
-                                         'Set tensor data')
+class LowerVectorConstantOp(DataSectionRewritePattern):
 
-        rewriter.replace_matched_op([
-            shape_op,
-            data_op,
-            alloc_len_op,
-            tensor_op,
-            tensor_len_op,
-            tensor_set_len_op,
-            tensor_set_shape_op,
-            tensor_set_data_op,
-        ], [tensor_op.rd])
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: trd.VectorConstantOp,
+                          rewriter: PatternRewriter):
+        """
+        Vectors are represented in memory as an n+1 array of int32, where the first
+        entry is the count of the vector
+        """
+        data = op.get_data()
+        label = self.label(self.func_name_of_op(op), op.label.data)
+
+        self.add_data(op, label, [len(data), *data])
+        rewriter.replace_matched_op(rd.LIOp.get(label))
 
 
 class LowerPrintOp(RewritePattern):
@@ -189,24 +180,117 @@ class LowerReshapeOp(DataSectionRewritePattern, HeapRewritePattern):
 
         self.add_data(op, label, self.shape_data(shape))
 
-        heap_ptr = self.heap_address(op)
-
         rewriter.replace_matched_op([
             shape := rd.LIOp.get(label),
-            trd.ReshapeTensorOp.get(op.arg, shape, heap_ptr)
+            data := trd.TensorShapeOp.get(op.arg),
+            trd.TensorMakeOp.get(shape, data),
         ])
 
 
-class LowerAddOp(HeapRewritePattern):
-
-    def shape_data(self, shape: list[int]) -> list[int]:
-        rank = len(shape)
-        encoded_ints = [rank, *shape]
-        return encoded_ints
+class LowerTensorAddOp(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: td.AddOp, rewriter: PatternRewriter):
+        shape = trd.TensorShapeOp.get(op.lhs)
+        lhs = trd.TensorDataOp.get(op.lhs)
+        rhs = trd.TensorDataOp.get(op.rhs)
+        sum = trd.VectorAddOp.get(lhs, rhs)
+        result = trd.TensorMakeOp.get(shape, sum)
+
+        rewriter.replace_matched_op([shape, lhs, rhs, sum, result])
+
+
+class LowerVectorAddOp(HeapRewritePattern):
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: trd.VectorAddOp,
+                          rewriter: PatternRewriter):
+        heap = self.heap_address(op)
+
+        rewriter.replace_matched_op([
+            count := rd.LWOp.get(op.rs1, 0, 'Get input count'),
+            rd.PrintOp.get(count),
+            storage_count := rd.AddIOp.get(count, 4,
+                                           'Input storage int32 count'),
+            rd.PrintOp.get(storage_count),
+            vector := trd.AllocOp.get(storage_count, heap),
+            rd.PrintOp.get(vector),
+            rd.SWOp.get(count, vector, 0, 'Set result count'),
+            lhs := rd.AddIOp.get(op.rs1, 4, 'lhs storage'),
+            rd.PrintOp.get(lhs),
+            rhs := rd.AddIOp.get(op.rs2, 4, 'lhs storage'),
+            rd.PrintOp.get(rhs),
+            dest := rd.AddIOp.get(vector, 4, 'destination storage'),
+            rd.PrintOp.get(dest),
+            trd.BufferAddOp.get(count, lhs, dest),
+            trd.BufferAddOp.get(count, rhs, dest),
+        ], [vector.rd])
+
+
+class LowerTensorMakeOp(HeapRewritePattern):
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: trd.TensorMakeOp,
+                          rewriter: PatternRewriter):
+        heap = self.heap_address(op)
+        shape = op.rs1
+        data = op.rs2
+
+        tensor_storage_len_op = rd.LIOp.get(2, 'Tensor storage')
+        tensor_op = trd.AllocOp.get(tensor_storage_len_op, heap)
+        tensor_set_shape_op = rd.SWOp.get(shape, tensor_op, 0,
+                                          'Set tensor shape')
+        tensor_set_data_op = rd.SWOp.get(data, tensor_op, 4, 'Set tensor data')
+
+        rewriter.replace_matched_op([
+            tensor_storage_len_op,
+            tensor_op,
+            rd.PrintOp.get(tensor_op),
+            rd.PrintOp.get(shape),
+            tensor_set_shape_op,
+            bla := rd.LWOp.get(tensor_op, 0),
+            rd.PrintOp.get(bla),
+            tensor_set_data_op,
+        ], [tensor_op.rd])
+
+
+class LowerTensorShapeOp(RewritePattern):
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: trd.TensorShapeOp,
+                          rewriter: PatternRewriter):
+        rewriter.replace_matched_op(rd.LWOp.get(op.rs1, 0, 'Get tensor shape'))
+
+
+class LowerTensorDataOp(RewritePattern):
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: trd.TensorDataOp,
+                          rewriter: PatternRewriter):
+        rewriter.replace_matched_op(rd.LWOp.get(op.rs1, 4, 'Get tensor data'))
+
+
+class LowerAllocOp(HeapRewritePattern):
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: trd.AllocOp, rewriter: PatternRewriter):
         heap_ptr = self.heap_address(op)
 
-        rewriter.replace_matched_op(
-            trd.AddTensorOp.get(op.lhs, op.rhs, heap_ptr))
+        rewriter.replace_matched_op([
+            rd.PrintOp.get(op.rs1),
+            four := rd.LIOp.get(4, '4 bytes per int'),
+            count := rd.MULOp.get(op.rs1, four, 'Alloc count bytes'),
+            rd.PrintOp.get(count),
+            old_heap_count := rd.LWOp.get(heap_ptr, 0, 'Old heap count'),
+            rd.PrintOp.get(old_heap_count),
+            new_heap_count := rd.AddOp.get(old_heap_count, count,
+                                           'New heap count'),
+            rd.PrintOp.get(new_heap_count),
+            rd.SWOp.get(new_heap_count, heap_ptr, 0, 'Update heap'),
+            heap_storage_start := rd.AddIOp.get(heap_ptr, 4,
+                                                'Heap storage start'),
+            rd.PrintOp.get(heap_storage_start),
+            result := rd.AddOp.get(heap_storage_start, old_heap_count,
+                                   'Allocated memory'),
+            rd.PrintOp.get(result),
+        ], [result.rd])
