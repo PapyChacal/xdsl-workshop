@@ -16,6 +16,11 @@ from xdsl.parser import BaseParser
 from xdsl.printer import Printer
 
 
+from xdsl.pattern_rewriter import (GreedyRewritePatternApplier,
+                                   PatternRewriter, PatternRewriteWalker,
+                                   RewritePattern, op_type_rewrite_pattern)
+
+
 @dataclass(frozen=True)
 class Register:
     """A riscv register."""
@@ -849,3 +854,11 @@ riscv_ssa_ops: List[Type[Operation]] = [
     SectionOp
 ]
 RISCVSSA = Dialect(riscv_ssa_ops, riscv_ssa_attrs)
+
+
+# This is not the best place for this, but it's the best we have:
+def apply_rewrites(module, *rewriters):
+    PatternRewriteWalker(GreedyRewritePatternApplier(list(r() for r in rewriters))).rewrite_module(module)
+
+
+
