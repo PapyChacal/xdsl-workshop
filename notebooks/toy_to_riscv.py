@@ -139,13 +139,13 @@ class LowerVectorAddOp(RewritePattern):
                           rewriter: PatternRewriter):
 
         rewriter.replace_matched_op([
-            count := rd.LWOp.get(op.rs1, 0, 'Get input count'),
+            count := rd.LWOp.get(op.lhs, 0, 'Get input count'),
             storage_count := rd.AddIOp.get(count, 1,
                                            'Input storage int32 count'),
             vector := rbd.AllocOp.get(storage_count),
             rd.SWOp.get(count, vector, 0, 'Set result count'),
-            lhs := rd.AddIOp.get(op.rs1, 4, 'lhs storage'),
-            rhs := rd.AddIOp.get(op.rs2, 4, 'lhs storage'),
+            lhs := rd.AddIOp.get(op.lhs, 4, 'lhs storage'),
+            rhs := rd.AddIOp.get(op.rhs, 4, 'rhs storage'),
             dest := rd.AddIOp.get(vector, 4, 'destination storage'),
             rbd.BufferAddOp.get(count, lhs, dest),
             rbd.BufferAddOp.get(count, rhs, dest),
@@ -155,10 +155,10 @@ class LowerVectorAddOp(RewritePattern):
 class LowerTensorMakeOp(RewritePattern):
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: tvd.TensorMakeOp,
+    def match_and_rewrite(self, op: td.TensorMakeOp,
                           rewriter: PatternRewriter):
-        shape = op.rs1
-        data = op.rs2
+        shape = op.shape
+        data = op.data
 
         tensor_storage_len_op = rd.LIOp.get(2, 'Tensor storage')
         tensor_op = rbd.AllocOp.get(tensor_storage_len_op)
@@ -178,17 +178,19 @@ class LowerTensorMakeOp(RewritePattern):
 class LowerTensorShapeOp(RewritePattern):
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: tvd.TensorShapeOp,
+    def match_and_rewrite(self, op: td.TensorShapeOp,
                           rewriter: PatternRewriter):
-        rewriter.replace_matched_op(rd.LWOp.get(op.rs1, 0, 'Get tensor shape'))
+        rewriter.replace_matched_op(
+            rd.LWOp.get(op.tensor, 0, 'Get tensor shape'))
 
 
 class LowerTensorDataOp(RewritePattern):
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: tvd.TensorDataOp,
+    def match_and_rewrite(self, op: td.TensorDataOp,
                           rewriter: PatternRewriter):
-        rewriter.replace_matched_op(rd.LWOp.get(op.rs1, 4, 'Get tensor data'))
+        rewriter.replace_matched_op(
+            rd.LWOp.get(op.tensor, 4, 'Get tensor data'))
 
 
 class LowerAllocOp(RewritePattern):

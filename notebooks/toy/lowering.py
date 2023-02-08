@@ -1,4 +1,5 @@
-from xdsl.dialects.builtin import UnrankedTensorType, TensorType
+from typing import cast
+from xdsl.dialects.builtin import UnrankedTensorType, TensorType, AnyTensorType
 from xdsl.pattern_rewriter import (op_type_rewrite_pattern, RewritePattern,
                                    PatternRewriter)
 
@@ -11,18 +12,18 @@ class LowerTensorConstantOp(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: td.ConstantOp, rewriter: PatternRewriter):
-        value_type = op.value.type
+        typ = op.value.type
 
-        assert not isinstance(
-            value_type,
-            UnrankedTensorType), 'Toy constants always have rank information'
+        assert isinstance(
+            typ, TensorType), 'Toy constants always have rank information'
+        typ = cast(td.AnyTensorTypeI32, typ)
 
-        shape: list[int] = value_type.get_shape()
-        data: list[int] = [int(el.value.data) for el in op.value.data.data]
+        shape: list[int] = op.get_shape()
+        data: list[int] = op.get_data()
 
         shape_vector = tvd.VectorConstantOp.get(shape, 'tensor_shape')
         data_vector = tvd.VectorConstantOp.get(data, 'tensor_data')
-        tensor = tvd.TensorMakeOp.get(shape_vector, data_vector)
+        tensor = td.TensorMakeOp.get(shape_vector, data_vector, typ)
 
         rewriter.replace_matched_op([shape_vector, data_vector, tensor])
 
@@ -45,12 +46,13 @@ class LowerReshapeOp(RewritePattern):
     def match_and_rewrite(self, op: td.ReshapeOp, rewriter: PatternRewriter):
         typ = op.res.typ
         assert isinstance(typ, TensorType)
+        typ = cast(td.TensorTypeI32, typ)
         shape = typ.get_shape()
 
         rewriter.replace_matched_op([
             new_shape := tvd.VectorConstantOp.get(shape, 'tensor_new_shape'),
-            old_data := tvd.TensorDataOp.get(op.arg),
-            tvd.TensorMakeOp.get(new_shape, old_data)
+            old_data := td.TensorDataOp.get(op.arg),
+            td.TensorMakeOp.get(new_shape, old_data, typ)
         ])
 
 
@@ -58,10 +60,14 @@ class LowerTensorAddOp(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: td.AddOp, rewriter: PatternRewriter):
-        shape = tvd.TensorShapeOp.get(op.lhs)
-        lhs = tvd.TensorDataOp.get(op.lhs)
-        rhs = tvd.TensorDataOp.get(op.rhs)
+        typ = op.res.typ
+        assert isinstance(typ, TensorType | UnrankedTensorType)
+        typ = cast(td.AnyTensorTypeI32, typ)
+
+        shape = td.TensorShapeOp.get(op.lhs)
+        lhs = td.TensorDataOp.get(op.lhs)
+        rhs = td.TensorDataOp.get(op.rhs)
         sum = tvd.VectorAddOp.get(lhs, rhs)
-        result = tvd.TensorMakeOp.get(shape, sum)
+        result = td.TensorMakeOp.get(shape, sum, typ)
 
         rewriter.replace_matched_op([shape, lhs, rhs, sum, result])
