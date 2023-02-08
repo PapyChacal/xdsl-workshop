@@ -2,6 +2,7 @@ from xdsl.dialects.builtin import (
     AnyFloat,
     AnyIntegerAttr,
     ArrayAttr,
+    DenseIntOrFPElementsAttr,
     DenseResourceAttr,
     FloatAttr,
     IntegerAttr,
@@ -140,7 +141,7 @@ class ConstantNoneOp(Operation):
 @irdl_op_definition
 class VTensorLitteralOp(Operation):
     name = "torch.vtensor.literal"
-    value: OpAttr[DenseResourceAttr]
+    value: OpAttr[DenseIntOrFPElementsAttr | DenseResourceAttr]
     res: Annotated[OpResult, VTensorType]
 
 
