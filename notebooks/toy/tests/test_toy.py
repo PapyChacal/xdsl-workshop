@@ -224,12 +224,6 @@ def test_rewrite_transposes():
         ]))
 
 
-def print_module(module: ModuleOp) -> str:
-    stream = StringIO()
-    Printer(target=Printer.Target.MLIR, stream=stream).print(module)
-    return stream.getvalue()
-
-
 def test_constant_folding():
     example = """
     def main() {
