@@ -118,7 +118,8 @@ class ToyAccelerator(InstructionSet):
         s_data = self.buffer_read(s_ptr, count)
         d_data = self.buffer_read(d_ptr, count)
 
-        self.buffer_write(d_ptr, data=[l + r for l, r in zip(s_data, d_data)])
+        self.buffer_write(
+            d_ptr, data=[l_el + r_el for l_el, r_el in zip(s_data, d_data)])
 
     def instruction_buffer_alloc(self, ins: Instruction):
         """

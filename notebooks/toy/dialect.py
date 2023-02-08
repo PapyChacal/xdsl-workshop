@@ -5,6 +5,7 @@ Toy language dialect from MLIR tutorial.
 from __future__ import annotations
 
 from typing import Annotated, List, TypeAlias, Union, Optional, Any, cast
+from functools import reduce
 
 from xdsl.ir import (Dialect, SSAValue, Attribute, Block, Region, Operation,
                      OpResult)
@@ -22,15 +23,16 @@ from xdsl.irdl import (
     irdl_op_definition,
     AnyAttr,
 )
+
 from xdsl.utils.exceptions import VerifyException
+
+import vector_ir.dialect as vd
+
+from vector_ir.dialect import NoSideEffect
 
 TensorTypeI32: TypeAlias = TensorType[IntegerType]
 UnrankedTensorTypeI32: TypeAlias = UnrankedTensorType[IntegerType]
 AnyTensorTypeI32: TypeAlias = TensorTypeI32 | UnrankedTensorTypeI32
-
-
-class NoSideEffect:
-    pass
 
 
 @irdl_op_definition
@@ -63,6 +65,16 @@ class ConstantOp(Operation, NoSideEffect):
             raise VerifyException(
                 "Expected value and result types to be equal: "
                 f"{self.res.typ}, {self.value.type}")
+
+    def get_type(self) -> TensorTypeI32:
+        # Constant cannot be unranked
+        return cast(TensorTypeI32, self.value.type)
+
+    def get_shape(self) -> list[int]:
+        return self.get_type().get_shape()
+
+    def get_data(self) -> list[int]:
+        return [int(el.value.data) for el in self.value.data.data]
 
 
 @irdl_op_definition
@@ -341,7 +353,71 @@ class TransposeOp(Operation, NoSideEffect):
         return TransposeOp.create(operands=[input], result_types=[output_type])
 
 
+# Tensor <-> Vector conversion
+
+
+@irdl_op_definition
+class TensorMakeOp(Operation, NoSideEffect):
+    name = "toy.tensor.make"
+
+    tensor: Annotated[OpResult, UnrankedTensorTypeI32]
+    shape: Annotated[Operand, vd.VectorTypeI32]
+    data: Annotated[Operand, vd.VectorTypeI32]
+
+    @classmethod
+    def get(cls, shape: Operation | SSAValue, data: Operation | SSAValue,
+            result_type: AnyTensorTypeI32) -> TensorMakeOp:
+        return cls.build(operands=[shape, data], result_types=[result_type])
+
+
+@irdl_op_definition
+class TensorDataOp(Operation, NoSideEffect):
+    name = "toy.tensor.data"
+
+    tensor: Annotated[Operand, AnyTensorTypeI32]
+    data: Annotated[OpResult, vd.VectorTypeI32]
+
+    @classmethod
+    def get(cls, tensor: Operation | SSAValue) -> TensorDataOp:
+        if isinstance(tensor, Operation):
+            tensor = tensor.results[0]
+        if isinstance(tensor.typ, TensorType):
+            data_len = reduce(lambda a, b: a * b, tensor.typ.get_shape(), 1)
+        else:
+            # Use -1 for unknown length
+            data_len = -1
+        result_type = vd.VectorTypeI32.from_element_type_and_shape(
+            i32, [data_len])
+        return cls.build(operands=[tensor], result_types=[result_type])
+
+
+@irdl_op_definition
+class TensorShapeOp(Operation, NoSideEffect):
+    name = "toy.tensor.shape"
+
+    tensor: Annotated[Operand, vd.VectorTypeI32]
+    data: Annotated[OpResult, AnyTensorTypeI32]
+
+    @classmethod
+    def get(cls, tensor: Operation | SSAValue) -> TensorShapeOp:
+        if isinstance(tensor, Operation):
+            tensor = tensor.results[0]
+
+        # If we know the tensor shape at compile time, we can set the
+        # vector length in the type
+
+        if isinstance(tensor.typ, TensorType):
+            shape = tensor.typ.get_shape()
+        else:
+            # Use -1 for unknown length
+            shape = [-1]
+
+        result_type = vd.VectorTypeI32.from_element_type_and_shape(i32, shape)
+
+        return cls.build(operands=[tensor], result_types=[result_type])
+
+
 Toy = Dialect([
     ConstantOp, AddOp, FuncOp, GenericCallOp, PrintOp, MulOp, ReturnOp,
-    ReshapeOp, TransposeOp
+    ReshapeOp, TransposeOp, TensorMakeOp, TensorShapeOp, TensorDataOp
 ], [])

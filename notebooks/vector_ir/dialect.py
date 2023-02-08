@@ -1,29 +1,36 @@
 from __future__ import annotations
 
+from typing import TypeAlias
+
 from xdsl.ir import Operation, SSAValue, Dialect, OpResult
 from xdsl.irdl import irdl_op_definition, Operand, OpAttr
-from xdsl.dialects.builtin import IntAttr, ArrayAttr, StringAttr
+from xdsl.dialects.builtin import StringAttr, VectorType, IntegerType, DenseIntOrFPElementsAttr, i32
 
 from typing import Annotated
 
-from toy.dialect import NoSideEffect
-
 from riscv.riscv_ssa import RegisterType
+
+VectorTypeI32: TypeAlias = VectorType[IntegerType]
+
+
+class NoSideEffect:
+    pass
 
 
 @irdl_op_definition
 class VectorAddOp(Operation, NoSideEffect):
-    name = "toy.vector.add"
+    name = "vector.add"
 
-    rd: Annotated[OpResult, RegisterType]
-    rs1: Annotated[Operand, RegisterType]
-    rs2: Annotated[Operand, RegisterType]
+    res: Annotated[OpResult, VectorTypeI32]
+    lhs: Annotated[Operand, VectorTypeI32]
+    rhs: Annotated[Operand, VectorTypeI32]
 
     @classmethod
-    def get(cls, lhs_reg: Operation | SSAValue,
-            rhs_reg: Operation | SSAValue) -> VectorAddOp:
-        return cls.build(operands=[lhs_reg, rhs_reg],
-                         result_types=[RegisterType()])
+    def get(cls, lhs: Operation | SSAValue,
+            rhs: Operation | SSAValue) -> VectorAddOp:
+        if isinstance(lhs, Operation):
+            lhs = lhs.results[0]
+        return cls.build(operands=[lhs, rhs], result_types=[lhs.typ])
 
 
 @irdl_op_definition
@@ -33,73 +40,32 @@ class VectorConstantOp(Operation, NoSideEffect):
     to the operation as an attribute. For example:
 
     ```mlir
-      %0 = riscv.toy.vector_constant array<[1, 2, 3, 4, 5, 6]>: array<i32>
+      %0 = riscv.vector_constant array<[1, 2, 3, 4, 5, 6]>: array<i32>
     ```
     """
-    name: str = "toy.vector.constant"
-    data: OpAttr[ArrayAttr[IntAttr]]
+    name: str = "vector.constant"
+    data: OpAttr[DenseIntOrFPElementsAttr]
     label: OpAttr[StringAttr]
-    res: Annotated[OpResult, RegisterType]
+    res: Annotated[OpResult, VectorTypeI32]
 
     @staticmethod
-    def get(data: list[int] | ArrayAttr[IntAttr],
+    def get(data: list[int] | DenseIntOrFPElementsAttr,
             label: str | StringAttr) -> VectorConstantOp:
         if isinstance(data, list):
-            data = ArrayAttr.from_list([IntAttr.from_int(i) for i in data])
+            data = DenseIntOrFPElementsAttr.vector_from_list(data, i32)
         if isinstance(label, str):
             label = StringAttr.from_str(label)
-        return VectorConstantOp.create(result_types=[RegisterType()],
+        result_type = data.type
+        return VectorConstantOp.create(result_types=[result_type],
                                        attributes={
                                            "data": data,
                                            "label": label
                                        })
 
     def get_data(self) -> list[int]:
-        return [el.data for el in self.data.data]
-
-
-@irdl_op_definition
-class TensorMakeOp(Operation, NoSideEffect):
-    name = "toy.tensor.make"
-
-    rd: Annotated[OpResult, RegisterType]
-    rs1: Annotated[Operand, RegisterType]
-    rs2: Annotated[Operand, RegisterType]
-
-    @classmethod
-    def get(cls, shape_reg: Operation | SSAValue,
-            data_reg: Operation | SSAValue) -> TensorMakeOp:
-        return cls.build(operands=[shape_reg, data_reg],
-                         result_types=[RegisterType()])
-
-
-@irdl_op_definition
-class TensorDataOp(Operation, NoSideEffect):
-    name = "toy.tensor.data"
-
-    rd: Annotated[OpResult, RegisterType]
-    rs1: Annotated[Operand, RegisterType]
-
-    @classmethod
-    def get(cls, tensor_reg: Operation | SSAValue) -> TensorDataOp:
-        return cls.build(operands=[tensor_reg], result_types=[RegisterType()])
-
-
-@irdl_op_definition
-class TensorShapeOp(Operation, NoSideEffect):
-    name = "toy.tensor.shape"
-
-    rd: Annotated[OpResult, RegisterType]
-    rs1: Annotated[Operand, RegisterType]
-
-    @classmethod
-    def get(cls, tensor_reg: Operation | SSAValue) -> TensorShapeOp:
-        return cls.build(operands=[tensor_reg], result_types=[RegisterType()])
+        return [int(el.value.data) for el in self.data.data.data]
 
 
 ToyRISCV = Dialect([
     VectorAddOp,
-    TensorMakeOp,
-    TensorDataOp,
-    TensorShapeOp,
 ], [])
