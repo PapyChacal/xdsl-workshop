@@ -111,10 +111,11 @@ def print_riscv_ssa(module: ModuleOp, memory: int = 1024) -> str:
 
 def run_riscv(code: str,
               extensions: List[Type[InstructionSet]] = [],
-              unlimited_regs: bool = False):
+              unlimited_regs: bool = False,
+              verbosity: int = 5):
     cfg = RunConfig(
         debug_instruction=False,
-        verbosity=5,
+        verbosity=verbosity,
         debug_on_exception=False,
         unlimited_registers=unlimited_regs,
     )
@@ -127,6 +128,6 @@ def run_riscv(code: str,
     cpu.load_program(loader.parse_io(io))
 
     try:
-        cpu.launch(cpu.mmu.programs[-1], True)
+        cpu.launch(cpu.mmu.programs[-1], verbosity > 1)
     except Exception as ex:
         print(ex)

@@ -1,11 +1,12 @@
 from pathlib import Path
 
-from xdsl.ir import MLContext
+from xdsl.ir import MLContext, Operation
 from xdsl.dialects.builtin import ModuleOp
+
 from xdsl.printer import Printer
 from xdsl.pattern_rewriter import PatternRewriteWalker
 
-from riscv.emulator_iop import run_riscv
+from riscv.emulator_iop import run_riscv, print_riscv_ssa
 
 from toy.dialect import Toy
 from toy.mlir_gen import MLIRGen
@@ -23,7 +24,7 @@ from riscv_buffer_ir.accelerator import ToyAccelerator
 from toy_to_riscv import (AddSections, LowerFuncOp, LowerReturnOp,
                           LowerPrintOp, LowerVectorConstantOp,
                           LowerTensorMakeOp, LowerTensorShapeOp,
-                          LowerTensorDataOp, LowerVectorAddOp)
+                          LowerTensorDataOp, LowerVectorAddOp, LowerAllocOp)
 
 from vector_ir.rewrites import (SimplifyRedundantShapeAccess,
                                 SimplifyRedundantDataAccess)
@@ -39,8 +40,8 @@ def parse_toy(program: str, ctx: MLContext | None = None) -> ModuleOp:
     return module_op
 
 
-def print_module(module: ModuleOp):
-    Printer(target=Printer.Target.MLIR).print(module)
+def print_op(op: Operation):
+    Printer(target=Printer.Target.MLIR).print(op)
 
 
 def optimise_toy(module: ModuleOp) -> ModuleOp:
@@ -90,8 +91,23 @@ def lower_to_riscv(module: ModuleOp) -> ModuleOp:
     PatternRewriteWalker(LowerTensorDataOp()).rewrite_module(copy)
     PatternRewriteWalker(LowerVectorAddOp()).rewrite_module(copy)
 
+    # PatternRewriteWalker(LowerAllocOp()).rewrite_module(copy)
+
     return copy
 
 
+def compile(program: str) -> str:
+    toy_0 = parse_toy(program)
+    toy_1 = optimise_toy(toy_0)
+    vir_0 = lower_from_toy(toy_1)
+    vir_1 = optimise_vir(vir_0)
+    risc_0 = lower_to_riscv(vir_1)
+    code = print_riscv_ssa(risc_0)
+    return code
+
+
 def emulate_riscv(program: str):
-    run_riscv(program, extensions=[ToyAccelerator], unlimited_regs=True)
+    run_riscv(program,
+              extensions=[ToyAccelerator],
+              unlimited_regs=True,
+              verbosity=1)

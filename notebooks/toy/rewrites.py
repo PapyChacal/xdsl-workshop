@@ -69,7 +69,7 @@ class ReshapeReshapeOptPattern(RewritePattern):
 
         t = cast(TensorTypeI32, op.res.typ)
         new_op = ReshapeOp.from_input_and_type(reshape_input_op.arg, t)
-        rewriter.replace_op(op, [new_op], [new_op.res])
+        rewriter.replace_matched_op(new_op)
 
 
 class FoldConstantReshapeOptPattern(RewritePattern):
@@ -93,4 +93,4 @@ class FoldConstantReshapeOptPattern(RewritePattern):
         new_value = DenseIntOrFPElementsAttr.create_dense_int(
             type=op.res.typ, data=reshape_input_op.value.data.data)
         new_op = ConstantOp.from_value(new_value)
-        rewriter.replace_op(op, [new_op], [new_op.res])
+        rewriter.replace_matched_op(new_op)
