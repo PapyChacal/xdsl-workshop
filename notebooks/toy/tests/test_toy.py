@@ -1,11 +1,9 @@
 from pathlib import Path
-from io import StringIO
 
 from xdsl.dialects.builtin import i32, ModuleOp, UnrankedTensorType
 from xdsl.ir import BlockArgument, MLContext, Operation
 from xdsl.pattern_rewriter import (GreedyRewritePatternApplier,
                                    PatternRewriteWalker)
-from xdsl.printer import Printer
 
 from ..parser import Parser
 from ..toy_ast import (ModuleAST, FunctionAST, PrototypeAST, VariableExprAST,
