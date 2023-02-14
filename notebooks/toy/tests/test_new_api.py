@@ -1,4 +1,4 @@
-from typing import Callable, ParamSpec, TypeAlias
+from typing import Callable
 
 from dataclasses import dataclass, field
 
@@ -32,11 +32,6 @@ class OpListBuilder:
 def foo_build(builder: OpListBuilder, op: Operation) -> tuple[OpResult, ...]:
     builder.add_op(op)
     return tuple(op.results)
-
-
-P = ParamSpec('P')
-_FuncOpImpl: TypeAlias = Callable[P, list[Operation]]
-_FuncOpDefWrapper: TypeAlias = Callable[[Callable[P, list[Operation]]], FuncOp]
 
 
 def new_module() -> ModuleOp:
