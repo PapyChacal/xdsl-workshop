@@ -1,7 +1,9 @@
+from typing import Callable, ParamSpec, TypeAlias
+
 from dataclasses import dataclass, field
 
 from xdsl.dialects.builtin import i32, ModuleOp, UnrankedTensorType
-from xdsl.ir import BlockArgument, Operation, OpResult
+from xdsl.ir import BlockArgument, Operation, OpResult, Attribute
 from xdsl.printer import Printer
 
 from ..dialect import (ConstantOp, FuncOp, GenericCallOp, MulOp, ReturnOp,
@@ -32,9 +34,37 @@ def foo_build(builder: OpListBuilder, op: Operation) -> tuple[OpResult, ...]:
     return tuple(op.results)
 
 
+P = ParamSpec('P')
+_FuncOpImpl: TypeAlias = Callable[P, list[Operation]]
+_FuncOpDefWrapper: TypeAlias = Callable[[Callable[P, list[Operation]]], FuncOp]
+
+
 def new_module() -> ModuleOp:
 
-    def multiply_transpose_def(*args: BlockArgument) -> list[Operation]:
+    unrankedTensorTypeI32 = UnrankedTensorType.from_type(i32)
+
+    def build_func_op(
+        name: str,
+        input_types: list[Attribute],
+        return_types: list[Attribute],
+        /,
+        private: bool = False
+    ) -> Callable[[Callable[P, list[Operation]]], FuncOp]:
+
+        def wrapper(func: Callable[P, list[Operation]]) -> FuncOp:
+            return FuncOp.from_callable(name,
+                                        input_types,
+                                        return_types,
+                                        func,
+                                        private=private)
+
+        return wrapper
+
+    @build_func_op('multiply_transpose',
+                   [unrankedTensorTypeI32, unrankedTensorTypeI32],
+                   [unrankedTensorTypeI32],
+                   private=True)
+    def multiply_transpose(*args: BlockArgument) -> list[Operation]:
         arg0, arg1 = args
         builder = OpListBuilder()
 
@@ -88,14 +118,8 @@ def new_module() -> ModuleOp:
 
         return builder.get_ops()
 
-    unrankedTensorTypeI32 = UnrankedTensorType.from_type(i32)
-
     module = ModuleOp.from_region_or_ops([
-        FuncOp.from_callable('multiply_transpose',
-                             [unrankedTensorTypeI32, unrankedTensorTypeI32],
-                             [unrankedTensorTypeI32],
-                             multiply_transpose_def,
-                             private=True),
+        multiply_transpose,
         FuncOp.from_callable('main', [], [], main_def),
     ])
 
