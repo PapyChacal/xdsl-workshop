@@ -3,7 +3,7 @@ from typing import Callable, ParamSpec, TypeAlias
 from dataclasses import dataclass, field
 
 from xdsl.dialects.builtin import i32, ModuleOp, UnrankedTensorType
-from xdsl.ir import BlockArgument, Operation, OpResult, Attribute
+from xdsl.ir import BlockArgument, Operation, OpResult, Attribute, SSAValue
 from xdsl.printer import Printer
 
 from ..dialect import (ConstantOp, FuncOp, GenericCallOp, MulOp, ReturnOp,
@@ -49,13 +49,24 @@ def new_module() -> ModuleOp:
         return_types: list[Attribute],
         /,
         private: bool = False
-    ) -> Callable[[Callable[P, list[Operation]]], FuncOp]:
+    ) -> Callable[[Callable[[OpListBuilder, tuple[SSAValue, ...]], None]],
+                  FuncOp]:
 
-        def wrapper(func: Callable[P, list[Operation]]) -> FuncOp:
+        def wrapper(
+            func: Callable[[OpListBuilder, tuple[SSAValue, ...]],
+                           None]) -> FuncOp:
+
+            def impl(*args: BlockArgument) -> list[Operation]:
+                builder = OpListBuilder()
+
+                func(builder, args)
+
+                return builder.get_ops()
+
             return FuncOp.from_callable(name,
                                         input_types,
                                         return_types,
-                                        func,
+                                        impl,
                                         private=private)
 
         return wrapper
@@ -64,16 +75,14 @@ def new_module() -> ModuleOp:
                    [unrankedTensorTypeI32, unrankedTensorTypeI32],
                    [unrankedTensorTypeI32],
                    private=True)
-    def multiply_transpose(*args: BlockArgument) -> list[Operation]:
+    def multiply_transpose(builder: OpListBuilder,
+                           args: tuple[SSAValue, SSAValue]) -> None:
         arg0, arg1 = args
-        builder = OpListBuilder()
 
         a_t, = foo_build(builder, TransposeOp.from_input(arg0))
         b_t, = foo_build(builder, TransposeOp.from_input(arg1))
         prod, = foo_build(builder, MulOp.from_summands(a_t, b_t))
         foo_build(builder, ReturnOp.from_input(prod))
-
-        return builder.get_ops()
 
     def main_def(*args: BlockArgument) -> list[Operation]:
         builder = OpListBuilder()
