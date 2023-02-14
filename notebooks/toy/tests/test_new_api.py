@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, ParamSpec, Concatenate
 
 from dataclasses import dataclass, field
 
@@ -34,6 +34,9 @@ def foo_build(builder: OpListBuilder, op: Operation) -> tuple[OpResult, ...]:
     return tuple(op.results)
 
 
+P = ParamSpec('P')
+
+
 def new_module() -> ModuleOp:
 
     unrankedTensorTypeI32 = UnrankedTensorType.from_type(i32)
@@ -44,17 +47,15 @@ def new_module() -> ModuleOp:
         return_types: list[Attribute],
         /,
         private: bool = False
-    ) -> Callable[[Callable[[OpListBuilder, tuple[SSAValue, ...]], None]],
-                  FuncOp]:
+    ) -> Callable[[Callable[Concatenate[OpListBuilder, P], None]], FuncOp]:
 
         def wrapper(
-            func: Callable[[OpListBuilder, tuple[SSAValue, ...]],
-                           None]) -> FuncOp:
+                func: Callable[Concatenate[OpListBuilder, P], None]) -> FuncOp:
 
-            def impl(*args: BlockArgument) -> list[Operation]:
+            def impl(*args: P.args, **kwargs: P.kwargs) -> list[Operation]:
                 builder = OpListBuilder()
 
-                func(builder, args)
+                func(builder, *args, **kwargs)
 
                 return builder.get_ops()
 
@@ -70,18 +71,15 @@ def new_module() -> ModuleOp:
                    [unrankedTensorTypeI32, unrankedTensorTypeI32],
                    [unrankedTensorTypeI32],
                    private=True)
-    def multiply_transpose(builder: OpListBuilder,
-                           args: tuple[SSAValue, SSAValue]) -> None:
-        arg0, arg1 = args
-
+    def multiply_transpose(builder: OpListBuilder, arg0: SSAValue,
+                           arg1: SSAValue) -> None:
         a_t, = foo_build(builder, TransposeOp.from_input(arg0))
         b_t, = foo_build(builder, TransposeOp.from_input(arg1))
         prod, = foo_build(builder, MulOp.from_summands(a_t, b_t))
         foo_build(builder, ReturnOp.from_input(prod))
 
-    def main_def(*args: BlockArgument) -> list[Operation]:
-        builder = OpListBuilder()
-
+    @build_func_op('main', [], [])
+    def main(builder: OpListBuilder) -> None:
         a, = foo_build(
             builder,
             ConstantOp.from_list([1, 2, 3, 4, 5, 6], [2, 3]),
@@ -120,11 +118,9 @@ def new_module() -> ModuleOp:
         )
         foo_build(builder, ReturnOp.from_input())
 
-        return builder.get_ops()
-
     module = ModuleOp.from_region_or_ops([
         multiply_transpose,
-        FuncOp.from_callable('main', [], [], main_def),
+        main,
     ])
 
     return module
