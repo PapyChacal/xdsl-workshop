@@ -21,7 +21,14 @@ class Builder:
     def add_op(self, op: Operation):
         self.ops.append(op)
 
+    @staticmethod
+    def build_op_list(func: Callable[[Builder], None]) -> list[Operation]:
 
+        builder = Builder()
+
+        func(builder)
+
+        return builder.get_ops()
 
 
 def foo_op_builder(
@@ -85,20 +92,21 @@ def build_callable(
     return wrapper
 
 
-# ((R, F, ...) -> T) -> ((...) -> ((R, F) -> T))
+# ((B, R, F, ...) -> T) -> ((B, ...) -> ((R, F) -> T))
 def foo_func_op_builder(
-    func: Callable[Concatenate[Region, FunctionType, _P], _T]
-) -> Callable[_P, Callable[[tuple[Region, FunctionType]], _T]]:
+    func: Callable[Concatenate[Builder, Region, FunctionType, _P], _T]
+) -> Callable[Concatenate[Builder, _P], Callable[[tuple[Region, FunctionType]],
+                                                 _T]]:
 
-    # (...) -> (R, F) -> T
+    # (B, ...) -> (R, F) -> T
     def wrapper(
-            *args: _P.args, **kwargs: _P.kwargs
+            builder: Builder, *args: _P.args, **kwargs: _P.kwargs
     ) -> Callable[[tuple[Region, FunctionType]], _T]:
 
         # (R, F) -> T
         def inner(region_and_type: tuple[Region, FunctionType]) -> _T:
             region, ftype = region_and_type
-            return func(region, ftype, *args, **kwargs)
+            return func(builder, region, ftype, *args, **kwargs)
 
         return inner
 

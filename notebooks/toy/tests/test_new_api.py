@@ -21,38 +21,40 @@ def new_module() -> ModuleOp:
 
     unrankedTensorTypeI32 = UnrankedTensorType.from_type(i32)
 
-    @toy.func_op('multiply_transpose', private=True)
-    @build_callable([unrankedTensorTypeI32, unrankedTensorTypeI32],
-                    [unrankedTensorTypeI32])
-    def multiply_transpose(builder: Builder, arg0: SSAValue,
-                           arg1: SSAValue) -> None:
-        a_t = toy.transpose(builder, arg0)
-        b_t = toy.transpose(builder, arg1)
-        prod = toy.mul(builder, a_t, b_t)
-        toy.return_(builder, prod)
+    @ModuleOp.from_region_or_ops
+    @Builder.build_op_list
+    def module(builder: Builder):
 
-    def call_multiply_transpose(builder: Builder, a: SSAValue,
-                                b: SSAValue) -> OpResult:
-        return toy.generic_call(builder, 'multiply_transpose', [a, b],
-                                [unrankedTensorTypeI32])
+        # complains about unused function
+        @toy.func_op(builder, 'multiply_transpose', private=True)
+        @build_callable([unrankedTensorTypeI32, unrankedTensorTypeI32],
+                        [unrankedTensorTypeI32])
+        def multiply_transpose(builder: Builder, arg0: SSAValue,
+                               arg1: SSAValue) -> None:
+            a_t = toy.transpose(builder, arg0)
+            b_t = toy.transpose(builder, arg1)
+            prod = toy.mul(builder, a_t, b_t)
+            toy.return_(builder, prod)
 
-    @toy.func_op('main')
-    @build_callable([], [])
-    def main(builder: Builder) -> None:
-        a = toy.constant(builder, [1, 2, 3, 4, 5, 6], [2, 3])
-        b_0 = toy.constant(builder, [1, 2, 3, 4, 5, 6], [6])
-        b = toy.reshape(builder, b_0, [2, 3])
-        c = call_multiply_transpose(builder, a, b)
-        call_multiply_transpose(builder, b, a)
-        call_multiply_transpose(builder, b, c)
-        a_t = toy.transpose(builder, a)
-        call_multiply_transpose(builder, a_t, c)
-        toy.return_(builder)
+        def call_multiply_transpose(builder: Builder, a: SSAValue,
+                                    b: SSAValue) -> OpResult:
+            return toy.generic_call(builder, 'multiply_transpose', [a, b],
+                                    [unrankedTensorTypeI32])
 
-    module = ModuleOp.from_region_or_ops([
-        multiply_transpose,
-        main,
-    ])
+        @build_callable([], [])
+        def main(builder: Builder) -> None:
+            a = toy.constant(builder, [1, 2, 3, 4, 5, 6], [2, 3])
+            b_0 = toy.constant(builder, [1, 2, 3, 4, 5, 6], [6])
+            b = toy.reshape(builder, b_0, [2, 3])
+            c = call_multiply_transpose(builder, a, b)
+            call_multiply_transpose(builder, b, a)
+            call_multiply_transpose(builder, b, c)
+            a_t = toy.transpose(builder, a)
+            call_multiply_transpose(builder, a_t, c)
+            toy.return_(builder)
+
+        # No complaints about unused access, but func op creation not at definition point
+        toy.func_op(builder, 'main')(main)
 
     return module
 

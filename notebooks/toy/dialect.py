@@ -212,7 +212,8 @@ class FuncOp(Operation):
                 "Expected return value to match return type of function")
 
 
-func_op = foo_func_op_builder(FuncOp.from_region_2)
+func_op_0 = foo_op_builder_0(FuncOp.from_region_2)
+func_op = foo_func_op_builder(func_op_0)
 
 
 @irdl_op_definition
