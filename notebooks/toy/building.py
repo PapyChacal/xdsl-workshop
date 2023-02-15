@@ -7,7 +7,7 @@ from xdsl.dialects.builtin import FunctionType
 
 
 @dataclass
-class OpListBuilder:
+class Builder:
     ops: list[Operation] = field(default_factory=list)
 
     def get_ops(self) -> list[Operation]:
@@ -22,9 +22,9 @@ P = ParamSpec('P')
 
 def foo_op_builder(
     func: Callable[P, Operation]
-) -> Callable[Concatenate[OpListBuilder, P], tuple[OpResult, ...]]:
+) -> Callable[Concatenate[Builder, P], tuple[OpResult, ...]]:
 
-    def impl(builder: OpListBuilder, *args: P.args,
+    def impl(builder: Builder, *args: P.args,
              **kwargs: P.kwargs) -> tuple[OpResult, ...]:
         op = func(*args, **kwargs)
         builder.add_op(op)
@@ -34,11 +34,10 @@ def foo_op_builder(
 
 
 def foo_op_builder_0(
-    func: Callable[P, Operation]
-) -> Callable[Concatenate[OpListBuilder, P], None]:
+        func: Callable[P,
+                       Operation]) -> Callable[Concatenate[Builder, P], None]:
 
-    def impl(builder: OpListBuilder, *args: P.args,
-             **kwargs: P.kwargs) -> None:
+    def impl(builder: Builder, *args: P.args, **kwargs: P.kwargs) -> None:
         op = func(*args, **kwargs)
         builder.add_op(op)
 
@@ -46,11 +45,10 @@ def foo_op_builder_0(
 
 
 def foo_op_builder_1(
-    func: Callable[P, Operation]
-) -> Callable[Concatenate[OpListBuilder, P], OpResult]:
+    func: Callable[P,
+                   Operation]) -> Callable[Concatenate[Builder, P], OpResult]:
 
-    def impl(builder: OpListBuilder, *args: P.args,
-             **kwargs: P.kwargs) -> OpResult:
+    def impl(builder: Builder, *args: P.args, **kwargs: P.kwargs) -> OpResult:
         op = func(*args, **kwargs)
         builder.add_op(op)
         return op.results[0]
@@ -60,15 +58,15 @@ def foo_op_builder_1(
 
 def build_callable(
     input_types: list[Attribute], return_types: list[Attribute]
-) -> Callable[[Callable[Concatenate[OpListBuilder, P], None]], tuple[
-        Region, FunctionType]]:
+) -> Callable[[Callable[Concatenate[Builder, P], None]], tuple[Region,
+                                                               FunctionType]]:
 
     def wrapper(
-        func: Callable[Concatenate[OpListBuilder, P], None]
+        func: Callable[Concatenate[Builder, P], None]
     ) -> tuple[Region, FunctionType]:
 
         def impl(*args: P.args, **kwargs: P.kwargs) -> list[Operation]:
-            builder = OpListBuilder()
+            builder = Builder()
 
             func(builder, *args, **kwargs)
 

@@ -6,7 +6,7 @@ from ..dialect import (ConstantOp, FuncOp, GenericCallOp, MulOp, ReturnOp,
                        ReshapeOp, TransposeOp)
 import toy.dialect as toy
 
-from ..building import OpListBuilder, build_callable
+from ..building import Builder, build_callable
 
 from io import StringIO
 
@@ -24,21 +24,21 @@ def new_module() -> ModuleOp:
     @toy.func_op('multiply_transpose', private=True)
     @build_callable([unrankedTensorTypeI32, unrankedTensorTypeI32],
                     [unrankedTensorTypeI32])
-    def multiply_transpose(builder: OpListBuilder, arg0: SSAValue,
+    def multiply_transpose(builder: Builder, arg0: SSAValue,
                            arg1: SSAValue) -> None:
         a_t = toy.transpose(builder, arg0)
         b_t = toy.transpose(builder, arg1)
         prod = toy.mul(builder, a_t, b_t)
         toy.return_(builder, prod)
 
-    def call_multiply_transpose(builder: OpListBuilder, a: SSAValue,
+    def call_multiply_transpose(builder: Builder, a: SSAValue,
                                 b: SSAValue) -> OpResult:
         return toy.generic_call(builder, 'multiply_transpose', [a, b],
                                 [unrankedTensorTypeI32])
 
     @toy.func_op('main')
     @build_callable([], [])
-    def main(builder: OpListBuilder) -> None:
+    def main(builder: Builder) -> None:
         a = toy.constant(builder, [1, 2, 3, 4, 5, 6], [2, 3])
         b_0 = toy.constant(builder, [1, 2, 3, 4, 5, 6], [6])
         b = toy.reshape(builder, b_0, [2, 3])
