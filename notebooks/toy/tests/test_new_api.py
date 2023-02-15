@@ -52,7 +52,7 @@ def new_module() -> ModuleOp:
             builder.create(call_multiply_transpose, b, c)
             a_t = builder.create(toy.transpose, a)
             builder.create(call_multiply_transpose, a_t, c)
-            toy.return_(builder)
+            builder.create(toy.return_)
 
         # No complaints about unused access, but func op creation not at definition point
         builder.create(toy.func_op, 'main')(main)
