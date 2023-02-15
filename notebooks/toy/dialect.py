@@ -30,6 +30,8 @@ import vector_ir.dialect as vd
 
 from vector_ir.dialect import NoSideEffect
 
+from .building import Builder
+
 TensorTypeI32: TypeAlias = TensorType[IntegerType]
 UnrankedTensorTypeI32: TypeAlias = UnrankedTensorType[IntegerType]
 AnyTensorTypeI32: TypeAlias = TensorTypeI32 | UnrankedTensorTypeI32
@@ -75,6 +77,9 @@ class ConstantOp(Operation, NoSideEffect):
 
     def get_data(self) -> list[int]:
         return [int(el.value.data) for el in self.value.data.data]
+
+
+constant = Builder.results_1(ConstantOp.from_list)
 
 
 @irdl_op_definition
@@ -164,6 +169,14 @@ class FuncOp(Operation):
             Region.from_block_list([Block.from_callable(input_types, func)]),
             private=private)
 
+    @staticmethod
+    def from_region_2(region: Region,
+                      ftype: FunctionType,
+                      name: str,
+                      /,
+                      private: bool = False) -> FuncOp:
+        return FuncOp.from_region(name, ftype, region, private=private)
+
     def verify_(self):
         # Check that the returned value matches the type of the function
         if len(self.body.blocks) != 1:
@@ -199,6 +212,10 @@ class FuncOp(Operation):
                 "Expected return value to match return type of function")
 
 
+func_op_0 = Builder.results_0(FuncOp.from_region_2)
+func_op = Builder.func_op_builder(func_op_0)
+
+
 @irdl_op_definition
 class GenericCallOp(Operation):
     name: str = "toy.generic_call"
@@ -218,6 +235,9 @@ class GenericCallOp(Operation):
         return cls.create(operands=operands,
                           result_types=return_types,
                           attributes={"callee": callee})
+
+
+generic_call = Builder.results_1(GenericCallOp.get)
 
 
 @irdl_op_definition
@@ -252,6 +272,9 @@ class MulOp(Operation, NoSideEffect):
                     if shape != arg.typ.shape:
                         raise VerifyException(
                             "Expected MulOp args to have the same shape")
+
+
+mul = Builder.results_1(MulOp.from_summands)
 
 
 @irdl_op_definition
@@ -290,6 +313,9 @@ class ReturnOp(Operation):
     def from_input(cls: type[ReturnOp],
                    input: Optional[SSAValue] = None) -> ReturnOp:
         return cls.create(operands=[input] if input is not None else [])
+
+
+return_ = Builder.results_0(ReturnOp.from_input)
 
 
 @irdl_op_definition
@@ -331,6 +357,9 @@ class ReshapeOp(Operation, NoSideEffect):
                 'Reshape operation result shape should be defined')
 
 
+reshape = Builder.results_1(ReshapeOp.from_input)
+
+
 @irdl_op_definition
 class TransposeOp(Operation, NoSideEffect):
     name: str = 'toy.transpose'
@@ -352,6 +381,8 @@ class TransposeOp(Operation, NoSideEffect):
 
         return TransposeOp.create(operands=[input], result_types=[output_type])
 
+
+transpose = Builder.results_1(TransposeOp.from_input)
 
 # Tensor <-> Vector conversion
 
