@@ -1,6 +1,4 @@
-from typing import Callable, ParamSpec, Concatenate, TypeVar
-
-from dataclasses import dataclass, field
+from typing import Callable, ParamSpec, Concatenate
 
 from xdsl.dialects.builtin import i32, ModuleOp, UnrankedTensorType
 from xdsl.ir import BlockArgument, Operation, OpResult, Attribute, SSAValue
@@ -8,6 +6,9 @@ from xdsl.printer import Printer
 
 from ..dialect import (ConstantOp, FuncOp, GenericCallOp, MulOp, ReturnOp,
                        ReshapeOp, TransposeOp)
+import toy.dialect as toy
+
+from ..building import OpListBuilder
 
 from io import StringIO
 
@@ -18,69 +19,7 @@ def op_desc(op: Operation) -> str:
     return stream.getvalue()
 
 
-@dataclass
-class OpListBuilder:
-    ops: list[Operation] = field(default_factory=list)
-
-    def get_ops(self) -> list[Operation]:
-        return self.ops
-
-    def add_op(self, op: Operation):
-        self.ops.append(op)
-
-
-def foo_build(builder: OpListBuilder, op: Operation) -> tuple[OpResult, ...]:
-    builder.add_op(op)
-    return tuple(op.results)
-
-
 P = ParamSpec('P')
-
-
-def foo_op_builder(
-    func: Callable[P, Operation]
-) -> Callable[Concatenate[OpListBuilder, P], tuple[OpResult, ...]]:
-
-    def impl(builder: OpListBuilder, *args: P.args,
-             **kwargs: P.kwargs) -> tuple[OpResult, ...]:
-        op = func(*args, **kwargs)
-        builder.add_op(op)
-        return tuple(op.results)
-
-    return impl
-
-
-def foo_op_builder_0(
-    func: Callable[P, Operation]
-) -> Callable[Concatenate[OpListBuilder, P], None]:
-
-    def impl(builder: OpListBuilder, *args: P.args,
-             **kwargs: P.kwargs) -> None:
-        op = func(*args, **kwargs)
-        builder.add_op(op)
-
-    return impl
-
-
-def foo_op_builder_1(
-    func: Callable[P, Operation]
-) -> Callable[Concatenate[OpListBuilder, P], OpResult]:
-
-    def impl(builder: OpListBuilder, *args: P.args,
-             **kwargs: P.kwargs) -> OpResult:
-        op = func(*args, **kwargs)
-        builder.add_op(op)
-        return op.results[0]
-
-    return impl
-
-
-toy_transpose = foo_op_builder_1(TransposeOp.from_input)
-toy_mul = foo_op_builder_1(MulOp.from_summands)
-toy_return = foo_op_builder_0(ReturnOp.from_input)
-toy_constant = foo_op_builder_1(ConstantOp.from_list)
-toy_reshape = foo_op_builder_1(ReshapeOp.from_input)
-toy_generic_call = foo_op_builder_1(GenericCallOp.get)
 
 
 def new_module() -> ModuleOp:
@@ -119,27 +58,27 @@ def new_module() -> ModuleOp:
                    private=True)
     def multiply_transpose(builder: OpListBuilder, arg0: SSAValue,
                            arg1: SSAValue) -> None:
-        a_t = toy_transpose(builder, arg0)
-        b_t = toy_transpose(builder, arg1)
-        prod = toy_mul(builder, a_t, b_t)
-        toy_return(builder, prod)
+        a_t = toy.transpose(builder, arg0)
+        b_t = toy.transpose(builder, arg1)
+        prod = toy.mul(builder, a_t, b_t)
+        toy.return_(builder, prod)
 
     def call_multiply_transpose(builder: OpListBuilder, a: SSAValue,
                                 b: SSAValue) -> OpResult:
-        return toy_generic_call(builder, 'multiply_transpose', [a, b],
+        return toy.generic_call(builder, 'multiply_transpose', [a, b],
                                 [unrankedTensorTypeI32])
 
     @build_func_op('main', [], [])
     def main(builder: OpListBuilder) -> None:
-        a = toy_constant(builder, [1, 2, 3, 4, 5, 6], [2, 3])
-        b_0 = toy_constant(builder, [1, 2, 3, 4, 5, 6], [6])
-        b = toy_reshape(builder, b_0, [2, 3])
+        a = toy.constant(builder, [1, 2, 3, 4, 5, 6], [2, 3])
+        b_0 = toy.constant(builder, [1, 2, 3, 4, 5, 6], [6])
+        b = toy.reshape(builder, b_0, [2, 3])
         c = call_multiply_transpose(builder, a, b)
         call_multiply_transpose(builder, b, a)
         call_multiply_transpose(builder, b, c)
-        a_t = toy_transpose(builder, a)
+        a_t = toy.transpose(builder, a)
         call_multiply_transpose(builder, a_t, c)
-        toy_return(builder)
+        toy.return_(builder)
 
     module = ModuleOp.from_region_or_ops([
         multiply_transpose,
