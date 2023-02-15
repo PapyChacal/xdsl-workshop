@@ -6,7 +6,7 @@ from ..dialect import (ConstantOp, FuncOp, GenericCallOp, MulOp, ReturnOp,
                        ReshapeOp, TransposeOp)
 import toy.dialect as toy
 
-from ..building import Builder, build_callable
+from ..building import Builder
 
 from io import StringIO
 
@@ -27,8 +27,9 @@ def new_module() -> ModuleOp:
 
         # complains about unused function
         @toy.func_op(builder, 'multiply_transpose', private=True)
-        @build_callable([unrankedTensorTypeI32, unrankedTensorTypeI32],
-                        [unrankedTensorTypeI32])
+        @Builder.callable_region(
+            [unrankedTensorTypeI32, unrankedTensorTypeI32],
+            [unrankedTensorTypeI32])
         def multiply_transpose(builder: Builder, arg0: SSAValue,
                                arg1: SSAValue) -> None:
             a_t = toy.transpose(builder, arg0)
@@ -41,7 +42,7 @@ def new_module() -> ModuleOp:
             return toy.generic_call(builder, 'multiply_transpose', [a, b],
                                     [unrankedTensorTypeI32])
 
-        @build_callable([], [])
+        @Builder.callable_region([], [])
         def main(builder: Builder) -> None:
             a = toy.constant(builder, [1, 2, 3, 4, 5, 6], [2, 3])
             b_0 = toy.constant(builder, [1, 2, 3, 4, 5, 6], [6])

@@ -30,7 +30,7 @@ import vector_ir.dialect as vd
 
 from vector_ir.dialect import NoSideEffect
 
-from .building import foo_op_builder_1, foo_op_builder_0, foo_func_op_builder
+from .building import Builder
 
 TensorTypeI32: TypeAlias = TensorType[IntegerType]
 UnrankedTensorTypeI32: TypeAlias = UnrankedTensorType[IntegerType]
@@ -79,7 +79,7 @@ class ConstantOp(Operation, NoSideEffect):
         return [int(el.value.data) for el in self.value.data.data]
 
 
-constant = foo_op_builder_1(ConstantOp.from_list)
+constant = Builder.results_1(ConstantOp.from_list)
 
 
 @irdl_op_definition
@@ -212,8 +212,8 @@ class FuncOp(Operation):
                 "Expected return value to match return type of function")
 
 
-func_op_0 = foo_op_builder_0(FuncOp.from_region_2)
-func_op = foo_func_op_builder(func_op_0)
+func_op_0 = Builder.results_0(FuncOp.from_region_2)
+func_op = Builder.func_op_builder(func_op_0)
 
 
 @irdl_op_definition
@@ -237,7 +237,7 @@ class GenericCallOp(Operation):
                           attributes={"callee": callee})
 
 
-generic_call = foo_op_builder_1(GenericCallOp.get)
+generic_call = Builder.results_1(GenericCallOp.get)
 
 
 @irdl_op_definition
@@ -274,7 +274,7 @@ class MulOp(Operation, NoSideEffect):
                             "Expected MulOp args to have the same shape")
 
 
-mul = foo_op_builder_1(MulOp.from_summands)
+mul = Builder.results_1(MulOp.from_summands)
 
 
 @irdl_op_definition
@@ -315,7 +315,7 @@ class ReturnOp(Operation):
         return cls.create(operands=[input] if input is not None else [])
 
 
-return_ = foo_op_builder_0(ReturnOp.from_input)
+return_ = Builder.results_0(ReturnOp.from_input)
 
 
 @irdl_op_definition
@@ -357,7 +357,7 @@ class ReshapeOp(Operation, NoSideEffect):
                 'Reshape operation result shape should be defined')
 
 
-reshape = foo_op_builder_1(ReshapeOp.from_input)
+reshape = Builder.results_1(ReshapeOp.from_input)
 
 
 @irdl_op_definition
@@ -382,7 +382,7 @@ class TransposeOp(Operation, NoSideEffect):
         return TransposeOp.create(operands=[input], result_types=[output_type])
 
 
-transpose = foo_op_builder_1(TransposeOp.from_input)
+transpose = Builder.results_1(TransposeOp.from_input)
 
 # Tensor <-> Vector conversion
 
