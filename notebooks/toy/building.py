@@ -1,8 +1,9 @@
-from typing import ParamSpec, Callable, Concatenate
+from typing import ParamSpec, Callable, Concatenate, TypeVar
 
 from dataclasses import dataclass, field
 
-from xdsl.ir import Operation, OpResult
+from xdsl.ir import Operation, OpResult, Attribute, Region, Block
+from xdsl.dialects.builtin import FunctionType
 
 
 @dataclass
@@ -55,3 +56,50 @@ def foo_op_builder_1(
         return op.results[0]
 
     return impl
+
+
+def build_callable(
+    input_types: list[Attribute], return_types: list[Attribute]
+) -> Callable[[Callable[Concatenate[OpListBuilder, P], None]], tuple[
+        Region, FunctionType]]:
+
+    def wrapper(
+        func: Callable[Concatenate[OpListBuilder, P], None]
+    ) -> tuple[Region, FunctionType]:
+
+        def impl(*args: P.args, **kwargs: P.kwargs) -> list[Operation]:
+            builder = OpListBuilder()
+
+            func(builder, *args, **kwargs)
+
+            return builder.get_ops()
+
+        region = Region.from_block_list(
+            [Block.from_callable(input_types, impl)])
+        ftype = FunctionType.from_lists(input_types, return_types)
+        return region, ftype
+
+    return wrapper
+
+
+T = TypeVar('T')
+
+
+# ((R, F, ...) -> T) -> ((...) -> ((R, F) -> T))
+def foo_func_op_builder(
+    func: Callable[Concatenate[Region, FunctionType, P], T]
+) -> Callable[P, Callable[[tuple[Region, FunctionType]], T]]:
+
+    # (...) -> (R, F) -> T
+    def wrapper(
+            *args: P.args,
+            **kwargs: P.kwargs) -> Callable[[tuple[Region, FunctionType]], T]:
+
+        # (R, F) -> T
+        def inner(region_and_type: tuple[Region, FunctionType]) -> T:
+            region, ftype = region_and_type
+            return func(region, ftype, *args, **kwargs)
+
+        return inner
+
+    return wrapper

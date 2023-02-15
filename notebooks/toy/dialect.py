@@ -30,7 +30,7 @@ import vector_ir.dialect as vd
 
 from vector_ir.dialect import NoSideEffect
 
-from .building import foo_op_builder_1, foo_op_builder_0
+from .building import foo_op_builder_1, foo_op_builder_0, foo_func_op_builder
 
 TensorTypeI32: TypeAlias = TensorType[IntegerType]
 UnrankedTensorTypeI32: TypeAlias = UnrankedTensorType[IntegerType]
@@ -169,6 +169,14 @@ class FuncOp(Operation):
             Region.from_block_list([Block.from_callable(input_types, func)]),
             private=private)
 
+    @staticmethod
+    def from_region_2(region: Region,
+                      ftype: FunctionType,
+                      name: str,
+                      /,
+                      private: bool = False) -> FuncOp:
+        return FuncOp.from_region(name, ftype, region, private=private)
+
     def verify_(self):
         # Check that the returned value matches the type of the function
         if len(self.body.blocks) != 1:
@@ -202,6 +210,9 @@ class FuncOp(Operation):
         if operand_typ != return_typ:
             raise VerifyException(
                 "Expected return value to match return type of function")
+
+
+func_op = foo_func_op_builder(FuncOp.from_region_2)
 
 
 @irdl_op_definition

@@ -1,14 +1,12 @@
-from typing import Callable, ParamSpec, Concatenate
-
 from xdsl.dialects.builtin import i32, ModuleOp, UnrankedTensorType
-from xdsl.ir import BlockArgument, Operation, OpResult, Attribute, SSAValue
+from xdsl.ir import BlockArgument, Operation, OpResult, SSAValue
 from xdsl.printer import Printer
 
 from ..dialect import (ConstantOp, FuncOp, GenericCallOp, MulOp, ReturnOp,
                        ReshapeOp, TransposeOp)
 import toy.dialect as toy
 
-from ..building import OpListBuilder
+from ..building import OpListBuilder, build_callable
 
 from io import StringIO
 
@@ -19,43 +17,13 @@ def op_desc(op: Operation) -> str:
     return stream.getvalue()
 
 
-P = ParamSpec('P')
-
-
 def new_module() -> ModuleOp:
 
     unrankedTensorTypeI32 = UnrankedTensorType.from_type(i32)
 
-    def build_func_op(
-        name: str,
-        input_types: list[Attribute],
-        return_types: list[Attribute],
-        /,
-        private: bool = False
-    ) -> Callable[[Callable[Concatenate[OpListBuilder, P], None]], FuncOp]:
-
-        def wrapper(
-                func: Callable[Concatenate[OpListBuilder, P], None]) -> FuncOp:
-
-            def impl(*args: P.args, **kwargs: P.kwargs) -> list[Operation]:
-                builder = OpListBuilder()
-
-                func(builder, *args, **kwargs)
-
-                return builder.get_ops()
-
-            return FuncOp.from_callable(name,
-                                        input_types,
-                                        return_types,
-                                        impl,
-                                        private=private)
-
-        return wrapper
-
-    @build_func_op('multiply_transpose',
-                   [unrankedTensorTypeI32, unrankedTensorTypeI32],
-                   [unrankedTensorTypeI32],
-                   private=True)
+    @toy.func_op('multiply_transpose', private=True)
+    @build_callable([unrankedTensorTypeI32, unrankedTensorTypeI32],
+                    [unrankedTensorTypeI32])
     def multiply_transpose(builder: OpListBuilder, arg0: SSAValue,
                            arg1: SSAValue) -> None:
         a_t = toy.transpose(builder, arg0)
@@ -68,7 +36,8 @@ def new_module() -> ModuleOp:
         return toy.generic_call(builder, 'multiply_transpose', [a, b],
                                 [unrankedTensorTypeI32])
 
-    @build_func_op('main', [], [])
+    @toy.func_op('main')
+    @build_callable([], [])
     def main(builder: OpListBuilder) -> None:
         a = toy.constant(builder, [1, 2, 3, 4, 5, 6], [2, 3])
         b_0 = toy.constant(builder, [1, 2, 3, 4, 5, 6], [6])
