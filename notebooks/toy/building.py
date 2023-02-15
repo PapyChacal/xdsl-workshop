@@ -21,6 +21,9 @@ class Builder:
     def add_op(self, op: Operation):
         self.ops.append(op)
 
+    def create(self, func: Callable[Concatenate[Builder, _P], _T], *args: _P.args, **kwargs: _P.kwargs) -> _T:
+        return func(self, *args, **kwargs)
+
     @staticmethod
     def build_op_list(func: Callable[[Builder], None]) -> list[Operation]:
 
