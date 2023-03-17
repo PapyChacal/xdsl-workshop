@@ -24,36 +24,36 @@ def new_module() -> ModuleOp:
     @Builder.build_op_list
     def module(builder: Builder):
         # complains about unused function
-        @builder.create(toy.func_op, "multiply_transpose", private=True)
+        @toy.func_op(builder, "multiply_transpose", private=True)
         @Builder.callable_region(
             [unrankedTensorTypeI32, unrankedTensorTypeI32],
             [unrankedTensorTypeI32])
         def multiply_transpose(builder: Builder, arg0: SSAValue,
                                arg1: SSAValue) -> None:
-            a_t = builder.create(toy.transpose, arg0)
-            b_t = builder.create(toy.transpose, arg1)
-            prod = builder.create(toy.mul, a_t, b_t)
-            builder.create(toy.return_, prod)
+            a_t = toy.transpose(builder, arg0)
+            b_t = toy.transpose(builder, arg1)
+            prod = toy.mul(builder, a_t, b_t)
+            toy.return_(builder, prod)
 
         def call_multiply_transpose(builder: Builder, a: SSAValue,
                                     b: SSAValue) -> OpResult:
-            return builder.create(toy.generic_call, "multiply_transpose",
-                                  [a, b], [unrankedTensorTypeI32])
+            return toy.generic_call(builder, "multiply_transpose", [a, b],
+                                    [unrankedTensorTypeI32])
 
         @Builder.callable_region([], [])
         def main(builder: Builder) -> None:
-            a = builder.create(toy.constant, [1, 2, 3, 4, 5, 6], [2, 3])
-            b_0 = builder.create(toy.constant, [1, 2, 3, 4, 5, 6], [6])
-            b = builder.create(toy.reshape, b_0, [2, 3])
-            c = builder.create(call_multiply_transpose, a, b)
-            builder.create(call_multiply_transpose, b, a)
-            builder.create(call_multiply_transpose, b, c)
-            a_t = builder.create(toy.transpose, a)
-            builder.create(call_multiply_transpose, a_t, c)
-            builder.create(toy.return_)
+            a = toy.constant(builder, [1, 2, 3, 4, 5, 6], [2, 3])
+            b_0 = toy.constant(builder, [1, 2, 3, 4, 5, 6], [6])
+            b = toy.reshape(builder, b_0, [2, 3])
+            c = call_multiply_transpose(builder, a, b)
+            call_multiply_transpose(builder, b, a)
+            call_multiply_transpose(builder, b, c)
+            a_t = toy.transpose(builder, a)
+            call_multiply_transpose(builder, a_t, c)
+            toy.return_(builder)
 
         # No complaints about unused access, but func op creation not at definition point
-        builder.create(toy.func_op, "main")(main)
+        toy.func_op(builder, "main")(main)
 
     return module
 
