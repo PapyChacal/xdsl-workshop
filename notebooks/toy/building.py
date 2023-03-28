@@ -9,6 +9,7 @@ from xdsl.dialects.builtin import FunctionType
 
 _P = ParamSpec('_P')
 _T = TypeVar('_T')
+_OpT = TypeVar('_OpT', bound=Operation)
 
 
 @dataclass
@@ -21,9 +22,11 @@ class Builder:
     def add_op(self, op: Operation):
         self.ops.append(op)
 
-    def create(self, func: Callable[Concatenate[Builder, _P], _T],
-               *args: _P.args, **kwargs: _P.kwargs) -> _T:
-        return func(self, *args, **kwargs)
+    def create(self, func: Callable[_P, _OpT], *args: _P.args,
+               **kwargs: _P.kwargs) -> _OpT:
+        op = func(*args, **kwargs)
+        self.add_op(op)
+        return op
 
     @staticmethod
     def build_op_list(func: Callable[[Builder], None]) -> list[Operation]:
@@ -33,44 +36,6 @@ class Builder:
         func(builder)
 
         return builder.get_ops()
-
-    @staticmethod
-    def results_n(
-        func: Callable[_P, Operation]
-    ) -> Callable[Concatenate[Builder, _P], tuple[OpResult, ...]]:
-
-        def impl(builder: Builder, *args: _P.args,
-                 **kwargs: _P.kwargs) -> tuple[OpResult, ...]:
-            op = func(*args, **kwargs)
-            builder.add_op(op)
-            return tuple(op.results)
-
-        return impl
-
-    @staticmethod
-    def results_0(
-        func: Callable[_P,
-                       Operation]) -> Callable[Concatenate[Builder, _P], None]:
-
-        def impl(builder: Builder, *args: _P.args,
-                 **kwargs: _P.kwargs) -> None:
-            op = func(*args, **kwargs)
-            builder.add_op(op)
-
-        return impl
-
-    @staticmethod
-    def results_1(
-        func: Callable[_P, Operation]
-    ) -> Callable[Concatenate[Builder, _P], OpResult]:
-
-        def impl(builder: Builder, *args: _P.args,
-                 **kwargs: _P.kwargs) -> OpResult:
-            op = func(*args, **kwargs)
-            builder.add_op(op)
-            return op.results[0]
-
-        return impl
 
     @staticmethod
     def callable_region(

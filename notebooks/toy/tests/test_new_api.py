@@ -28,33 +28,35 @@ def new_module() -> ModuleOp:
             [unrankedTensorTypeI32])
         def multiply_transpose(builder: Builder, arg0: SSAValue,
                                arg1: SSAValue) -> None:
-            a_t = toy.transpose(builder, arg0)
-            b_t = toy.transpose(builder, arg1)
-            prod = toy.mul(builder, a_t, b_t)
-            toy.return_(builder, prod)
+            a_t = builder.create(toy.TransposeOp.from_input, arg0).res
+            b_t = builder.create(toy.TransposeOp.from_input, arg1).res
+            prod = builder.create(toy.MulOp.from_summands, a_t, b_t).res
+            builder.create(toy.ReturnOp.from_input, prod)
 
         def call_multiply_transpose(builder: Builder, a: SSAValue,
                                     b: SSAValue) -> OpResult:
-            return toy.generic_call(builder, "multiply_transpose", [a, b],
-                                    [unrankedTensorTypeI32])
+            return builder.create(toy.GenericCallOp.get, "multiply_transpose",
+                                  [a, b], [unrankedTensorTypeI32]).res[0]
 
         @Builder.callable_region([], [])
         def main(builder: Builder) -> None:
-            a = toy.constant(builder, [1, 2, 3, 4, 5, 6], [2, 3])
-            b_0 = toy.constant(builder, [1, 2, 3, 4, 5, 6], [6])
-            b = toy.reshape(builder, b_0, [2, 3])
+            a = builder.create(toy.ConstantOp.from_list, [1, 2, 3, 4, 5, 6],
+                               [2, 3]).res
+            b_0 = builder.create(toy.ConstantOp.from_list, [1, 2, 3, 4, 5, 6],
+                                 [6]).res
+            b = builder.create(toy.ReshapeOp.from_input, b_0, [2, 3]).res
             c = call_multiply_transpose(builder, a, b)
             call_multiply_transpose(builder, b, a)
             call_multiply_transpose(builder, b, c)
-            a_t = toy.transpose(builder, a)
+            a_t = builder.create(toy.TransposeOp.from_input, a).res
             call_multiply_transpose(builder, a_t, c)
-            toy.return_(builder)
+            builder.create(toy.ReturnOp.from_input)
 
-        builder.create(toy.func_op,
+        builder.create(toy.FuncOp.from_callable_region,
                        "multiply_transpose",
                        multiply_transpose,
                        private=True)
-        builder.create(toy.func_op, "main", main)
+        builder.create(toy.FuncOp.from_callable_region, "main", main)
 
     return module
 
