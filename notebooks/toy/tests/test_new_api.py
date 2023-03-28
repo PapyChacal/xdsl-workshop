@@ -21,7 +21,7 @@ def new_module() -> ModuleOp:
     unrankedTensorTypeI32 = UnrankedTensorType.from_type(i32)
 
     @ModuleOp.from_region_or_ops
-    @Builder.build_op_list
+    @Builder.region
     def module(builder: Builder):
         @Builder.callable_region(
             [unrankedTensorTypeI32, unrankedTensorTypeI32],

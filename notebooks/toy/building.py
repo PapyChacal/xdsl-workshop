@@ -29,13 +29,14 @@ class Builder:
         return op
 
     @staticmethod
-    def build_op_list(func: Callable[[Builder], None]) -> list[Operation]:
+    def region(func: Callable[[Builder], None]) -> Region:
 
         builder = Builder()
 
         func(builder)
 
-        return builder.get_ops()
+        ops = builder.get_ops()
+        return Region.from_operation_list(ops)
 
     @staticmethod
     def callable_region(
