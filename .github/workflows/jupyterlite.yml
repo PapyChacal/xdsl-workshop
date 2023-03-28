@@ -97,8 +97,24 @@ jobs:
 
           python -m jupyter lite build --contents content --pyodide pyodide/pyodide
 
-      - name: Deploy private website
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: |
-          ssh-keyscan -H xdsl-workshop.datenvorr.at >> ~/.ssh/known_hosts
-          rsync -r --delete _output/* website@xdsl-workshop.datenvorr.at:/home/website/public
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./_output
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
