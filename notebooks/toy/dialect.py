@@ -170,11 +170,11 @@ class FuncOp(Operation):
             private=private)
 
     @staticmethod
-    def from_region_2(region: Region,
-                      ftype: FunctionType,
-                      name: str,
+    def from_region_2(name: str,
+                      callable_region: tuple[Region, FunctionType],
                       /,
                       private: bool = False) -> FuncOp:
+        region, ftype = callable_region
         return FuncOp.from_region(name, ftype, region, private=private)
 
     def verify_(self):
@@ -212,8 +212,7 @@ class FuncOp(Operation):
                 "Expected return value to match return type of function")
 
 
-func_op_0 = Builder.results_0(FuncOp.from_region_2)
-func_op = Builder.func_op_builder(func_op_0)
+func_op = Builder.results_0(FuncOp.from_region_2)
 
 
 @irdl_op_definition

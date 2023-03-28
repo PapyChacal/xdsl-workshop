@@ -23,8 +23,6 @@ def new_module() -> ModuleOp:
     @ModuleOp.from_region_or_ops
     @Builder.build_op_list
     def module(builder: Builder):
-        # complains about unused function
-        @toy.func_op(builder, "multiply_transpose", private=True)
         @Builder.callable_region(
             [unrankedTensorTypeI32, unrankedTensorTypeI32],
             [unrankedTensorTypeI32])
@@ -52,8 +50,11 @@ def new_module() -> ModuleOp:
             call_multiply_transpose(builder, a_t, c)
             toy.return_(builder)
 
-        # No complaints about unused access, but func op creation not at definition point
-        toy.func_op(builder, "main")(main)
+        builder.create(toy.func_op,
+                       "multiply_transpose",
+                       multiply_transpose,
+                       private=True)
+        builder.create(toy.func_op, "main", main)
 
     return module
 
