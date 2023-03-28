@@ -9,9 +9,8 @@ from functools import reduce
 
 from xdsl.ir import (Dialect, SSAValue, Attribute, Block, Region, Operation,
                      OpResult)
-from xdsl.dialects.builtin import (IntegerType, FunctionType,
-                                   FlatSymbolRefAttr, TensorType,
-                                   UnrankedTensorType, i32,
+from xdsl.dialects.builtin import (IntegerType, FunctionType, SymbolRefAttr,
+                                   TensorType, UnrankedTensorType, i32,
                                    DenseIntOrFPElementsAttr, StringAttr)
 from xdsl.irdl import (
     OpAttr,
@@ -203,17 +202,17 @@ class FuncOp(Operation):
 class GenericCallOp(Operation):
     name: str = "toy.generic_call"
     arguments: Annotated[VarOperand, AnyAttr()]
-    callee: OpAttr[FlatSymbolRefAttr]
+    callee: OpAttr[SymbolRefAttr]
 
     # Note: naming this results triggers an ArgumentError
     res: Annotated[VarOpResult, AnyTensorTypeI32]
 
     @classmethod
-    def get(cls: type[GenericCallOp], callee: Union[str, FlatSymbolRefAttr],
+    def get(cls: type[GenericCallOp], callee: Union[str, SymbolRefAttr],
             operands: List[Union[SSAValue, OpResult]],
             return_types: List[Attribute]) -> GenericCallOp:
         if isinstance(callee, str):
-            callee = FlatSymbolRefAttr.from_str(callee)
+            callee = SymbolRefAttr.from_str(callee)
 
         return cls.create(operands=operands,
                           result_types=return_types,
