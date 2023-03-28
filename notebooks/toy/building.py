@@ -4,7 +4,7 @@ from typing import ParamSpec, Callable, Concatenate, TypeVar
 
 from dataclasses import dataclass, field
 
-from xdsl.ir import Operation, OpResult, Attribute, Region, Block
+from xdsl.ir import Operation, Attribute, Region, Block
 from xdsl.dialects.builtin import FunctionType
 
 _P = ParamSpec('_P')
