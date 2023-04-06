@@ -10,7 +10,7 @@ from functools import reduce
 from xdsl.ir import (Dialect, SSAValue, Attribute, Block, Region, Operation,
                      OpResult)
 from xdsl.dialects.builtin import (IntegerType, FunctionType,
-                                   FlatSymbolRefAttr, TensorType,
+                                   SymbolRefAttr, TensorType,
                                    UnrankedTensorType, i32,
                                    DenseIntOrFPElementsAttr, StringAttr)
 from xdsl.irdl import (
@@ -142,11 +142,11 @@ class FuncOp(Operation):
                     /,
                     private: bool = False):
         attributes: dict[str, Attribute] = {
-            "sym_name": StringAttr.from_str(name),
+            "sym_name": StringAttr(name),
             "function_type": ftype,
         }
         if private:
-            attributes["sym_visibility"] = StringAttr.from_str("private")
+            attributes["sym_visibility"] = StringAttr("private")
 
         return FuncOp.create(attributes=attributes, regions=[region])
 
@@ -203,17 +203,17 @@ class FuncOp(Operation):
 class GenericCallOp(Operation):
     name: str = "toy.generic_call"
     arguments: Annotated[VarOperand, AnyAttr()]
-    callee: OpAttr[FlatSymbolRefAttr]
+    callee: OpAttr[SymbolRefAttr]
 
     # Note: naming this results triggers an ArgumentError
     res: Annotated[VarOpResult, AnyTensorTypeI32]
 
     @classmethod
-    def get(cls: type[GenericCallOp], callee: Union[str, FlatSymbolRefAttr],
+    def get(cls: type[GenericCallOp], callee: Union[str, SymbolRefAttr],
             operands: List[Union[SSAValue, OpResult]],
             return_types: List[Attribute]) -> GenericCallOp:
         if isinstance(callee, str):
-            callee = FlatSymbolRefAttr.from_str(callee)
+            callee = SymbolRefAttr(callee)
 
         return cls.create(operands=operands,
                           result_types=return_types,

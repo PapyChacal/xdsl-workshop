@@ -54,7 +54,7 @@ class VectorConstantOp(Operation, NoSideEffect):
         if isinstance(data, list):
             data = DenseIntOrFPElementsAttr.vector_from_list(data, i32)
         if isinstance(label, str):
-            label = StringAttr.from_str(label)
+            label = StringAttr(label)
         result_type = data.type
         return VectorConstantOp.create(result_types=[result_type],
                                        attributes={

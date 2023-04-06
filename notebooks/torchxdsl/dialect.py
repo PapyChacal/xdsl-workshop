@@ -14,7 +14,6 @@ from xdsl.irdl import (
     OpAttr,
     Operand,
     ParameterDef,
-    builder,
     irdl_attr_definition,
     irdl_op_definition,
 )
@@ -38,21 +37,19 @@ class BoolAttr(Data[bool]):
         printer.print_string(f"{data}")
 
     @staticmethod
-    @builder
     def from_bool(data: bool):
         return BoolAttr(data)
 
 
-def prase_torch_type_without_prefix(parser: BaseParser) -> ParametrizedAttribute:
+def prase_torch_type_without_prefix(
+        parser: BaseParser) -> ParametrizedAttribute:
     # Get name of type
     type_name = parser.tokenizer.next_token_of_pattern(ParserCommons.bare_id)
     if type_name is None:
         parser.raise_error("Expected a type name")
     type_def = parser.ctx.get_optional_attr(
         "torch." + type_name.text
-        if not type_name.text.startswith("torch.")
-        else type_name.text
-    )
+        if not type_name.text.startswith("torch.") else type_name.text)
     if type_def is None:
         parser.raise_error(f"Unknown type {type_name.text}")
 

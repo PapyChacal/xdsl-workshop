@@ -8,7 +8,7 @@ from xdsl.ir import (Operation, ParametrizedAttribute, SSAValue, Dialect,
 
 from xdsl.irdl import (irdl_op_definition, irdl_attr_definition, OptOpResult,
                        VarOperand, SingleBlockRegion, OpAttr, OptOpAttr,
-                       OptOperand, builder, Operand)
+                       OptOperand, Operand)
 from xdsl.dialects.builtin import StringAttr, IntegerAttr, AnyIntegerAttr
 from xdsl.utils.exceptions import VerifyException
 
@@ -98,17 +98,14 @@ class RegisterAttr(Data[Register]):
         printer.print_string(data.get_abi_name())
 
     @staticmethod
-    @builder
     def from_index(index: int) -> RegisterAttr:
         return RegisterAttr(Register.from_index(index))
 
     @staticmethod
-    @builder
     def from_name(name: str) -> RegisterAttr:
         return RegisterAttr(Register.from_name(name))
 
     @staticmethod
-    @builder
     def from_register(register: Register) -> RegisterAttr:
         return RegisterAttr(register)
 
@@ -126,7 +123,6 @@ class LabelAttr(Data[str]):
         printer.print_string(data)
 
     @staticmethod
-    @builder
     def from_str(name: str) -> LabelAttr:
         return LabelAttr(name)
 
@@ -159,7 +155,7 @@ class Riscv1Rd1Rs1ImmOperation(Operation):
             "immediate": immediate,
         }
         if comment:
-            attributes["comment"] = StringAttr.from_str(comment)
+            attributes["comment"] = StringAttr(comment)
         return cls.build(operands=[rs1],
                          result_types=[RegisterType()],
                          attributes=attributes)
@@ -186,7 +182,7 @@ class Riscv2Rs1ImmOperation(Operation):
             "immediate": immediate,
         }
         if comment:
-            attributes["comment"] = comment
+            attributes["comment"] = StringAttr(comment)
         return cls.build(operands=[rs1, rs2], attributes=attributes)
 
 
@@ -211,7 +207,7 @@ class Riscv2Rs1OffOperation(Operation):
             "offset": offset,
         }
         if comment:
-            attributes["comment"] = StringAttr.from_str(comment)
+            attributes["comment"] = StringAttr(comment)
         return cls.build(operands=[rs1, rs2], attributes=attributes)
 
 
@@ -296,7 +292,7 @@ class Riscv1Rd1ImmOperation(Operation):
             "immediate": immediate,
         }
         if comment:
-            attributes["comment"] = comment
+            attributes["comment"] = StringAttr(comment)
         return cls.build(result_types=[RegisterType()], attributes=attributes)
 
 
@@ -696,10 +692,10 @@ class LabelOp(Operation):
             label: Union[str, StringAttr],
             comment: Optional[str] = None) -> Op:
         attributes: Dict[str, Any] = {
-            "label": label,
+            "label": StringAttr(label) if isinstance(label, str) else label,
         }
         if comment:
-            attributes["comment"] = comment
+            attributes["comment"] = StringAttr(comment)
         return cls.build(operands=[], result_types=[], attributes=attributes)
 
 
@@ -715,10 +711,10 @@ class DirectiveOp(Operation):
         attributes: Dict[str, Any] = {
             "directive":
             directive if isinstance(directive, StringAttr) else
-            StringAttr.from_str(directive),
+            StringAttr(directive),
             "value":
             value
-            if isinstance(value, StringAttr) else StringAttr.from_str(value),
+            if isinstance(value, StringAttr) else StringAttr(value),
         }
         return cls.build(operands=[], result_types=[], attributes=attributes)
 
@@ -743,7 +739,7 @@ class FuncOp(Operation):
     @staticmethod
     def from_region(name: str, region: Region) -> FuncOp:
         attributes: dict[str, Attribute] = {
-            "func_name": StringAttr.from_str(name)
+            "func_name": StringAttr(name)
         }
 
         return FuncOp.create(attributes=attributes, regions=[region])
@@ -833,7 +829,7 @@ class SectionOp(Operation):
     @staticmethod
     def from_region(directive: str | StringAttr, region: Region) -> SectionOp:
         if isinstance(directive, str):
-            directive = StringAttr.from_str(directive)
+            directive = StringAttr(directive)
         return SectionOp.create(attributes={'directive': directive},
                                 regions=[region])
 
