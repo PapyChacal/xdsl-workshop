@@ -42,5 +42,5 @@ jobs:
 
     - name: Test all the notebooks
       run: |
-      	cd ..
+        cd ..
         pytest --nbval $(find -iname "*.ipynb" -not -path "xdsl/*") -vv
