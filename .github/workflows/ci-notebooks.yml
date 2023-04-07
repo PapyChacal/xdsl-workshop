@@ -42,4 +42,4 @@ jobs:
 
     - name: Test all the notebooks
       run: |
-        pytest --nbval $(find -iname "*.ipynb") -vv
+        pytest --nbval --ignore=xdsl -vv
