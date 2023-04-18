@@ -16,11 +16,6 @@ from xdsl.parser import BaseParser
 from xdsl.printer import Printer
 
 
-from xdsl.pattern_rewriter import (GreedyRewritePatternApplier,
-                                   PatternRewriter, PatternRewriteWalker,
-                                   RewritePattern, op_type_rewrite_pattern)
-
-
 @dataclass(frozen=True)
 class Register:
     """A riscv register."""
@@ -93,9 +88,8 @@ class RegisterAttr(Data[Register]):
     def parse_parameter(parser: BaseParser) -> Register:
         assert False
 
-    @staticmethod
-    def print_parameter(data: Register, printer: Printer) -> None:
-        printer.print_string(data.get_abi_name())
+    def print_parameter(self, printer: Printer) -> None:
+        printer.print_string(self.data.get_abi_name())
 
     @staticmethod
     def from_index(index: int) -> RegisterAttr:
@@ -118,9 +112,8 @@ class LabelAttr(Data[str]):
     def parse_parameter(parser: BaseParser) -> str:
         assert False
 
-    @staticmethod
-    def print_parameter(data: str, printer: Printer) -> None:
-        printer.print_string(data)
+    def print_parameter(self, printer: Printer) -> None:
+        printer.print_string(self.data)
 
     @staticmethod
     def from_str(name: str) -> LabelAttr:
@@ -710,11 +703,10 @@ class DirectiveOp(Operation):
             value: str | StringAttr) -> Op:
         attributes: Dict[str, Any] = {
             "directive":
-            directive if isinstance(directive, StringAttr) else
-            StringAttr(directive),
+            directive
+            if isinstance(directive, StringAttr) else StringAttr(directive),
             "value":
-            value
-            if isinstance(value, StringAttr) else StringAttr(value),
+            value if isinstance(value, StringAttr) else StringAttr(value),
         }
         return cls.build(operands=[], result_types=[], attributes=attributes)
 
@@ -738,9 +730,7 @@ class FuncOp(Operation):
 
     @staticmethod
     def from_region(name: str, region: Region) -> FuncOp:
-        attributes: dict[str, Attribute] = {
-            "func_name": StringAttr(name)
-        }
+        attributes: dict[str, Attribute] = {"func_name": StringAttr(name)}
 
         return FuncOp.create(attributes=attributes, regions=[region])
 
@@ -795,10 +785,9 @@ class ReturnOp(Operation):
     value: Annotated[OptOperand, RegisterType]
 
     @classmethod
-    def get(cls: Type[Op],
-            value: Optional[Union[Operation, SSAValue]] = None) -> Op:
-        operands = [[]] if value is None else [value]
-        return cls.build(operands=operands)
+    def get(cls: Type[Op], value: Operation | SSAValue | None = None) -> Op:
+        # operands = [[]] if value is None else [value]
+        return cls.build(operands=[value])
 
 
 # debugging instructions:
@@ -818,7 +807,7 @@ class PrintOp(Operation):
 @irdl_op_definition
 class SectionOp(Operation):
     '''
-    This instruction corresponds to a section. Its block can be added to during 
+    This instruction corresponds to a section. Its block can be added to during
     the lowering process.
     '''
     name = 'riscv.section'
@@ -850,11 +839,3 @@ riscv_ssa_ops: List[Type[Operation]] = [
     SectionOp
 ]
 RISCVSSA = Dialect(riscv_ssa_ops, riscv_ssa_attrs)
-
-
-# This is not the best place for this, but it's the best we have:
-def apply_rewrites(module, *rewriters):
-    PatternRewriteWalker(GreedyRewritePatternApplier(list(r() for r in rewriters))).rewrite_module(module)
-
-
-
