@@ -9,9 +9,8 @@ from functools import reduce
 
 from xdsl.ir import (Dialect, SSAValue, Attribute, Block, Region, Operation,
                      OpResult)
-from xdsl.dialects.builtin import (IntegerType, FunctionType,
-                                   SymbolRefAttr, TensorType,
-                                   UnrankedTensorType, i32,
+from xdsl.dialects.builtin import (IntegerType, FunctionType, SymbolRefAttr,
+                                   TensorType, UnrankedTensorType, i32,
                                    DenseIntOrFPElementsAttr, StringAttr)
 from xdsl.irdl import (
     OpAttr,
@@ -23,6 +22,7 @@ from xdsl.irdl import (
     irdl_op_definition,
     AnyAttr,
 )
+from xdsl.utils.hints import isa
 
 from xdsl.utils.exceptions import VerifyException
 
@@ -340,13 +340,13 @@ class TransposeOp(Operation, NoSideEffect):
     @staticmethod
     def from_input(input: SSAValue):
         input_type = input.typ
-        assert isinstance(input_type, TensorType | UnrankedTensorType)
+        assert isa(input_type, TensorType | UnrankedTensorType)
         output_type: TensorType[Any] | UnrankedTensorType[Any]
-        if isinstance(input_type, TensorType):
+        if isa(input_type, TensorType[IntegerType]):
             element_type = cast(IntegerType,
                                 cast(TensorType[Any], input_type).element_type)
             output_type = TensorType.from_type_and_list(
-                element_type, list(reversed(input_type.shape.data)))
+                element_type, list(reversed(input_type.get_shape())))
         else:
             output_type = input_type
 

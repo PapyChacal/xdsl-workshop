@@ -1,8 +1,10 @@
 from typing import cast
 from xdsl.ir import OpResult, Operation
-from xdsl.dialects.builtin import DenseIntOrFPElementsAttr
+from xdsl.dialects.builtin import (DenseIntOrFPElementsAttr, ArrayAttr,
+                                   IntegerAttr, IntegerType)
 from xdsl.pattern_rewriter import (op_type_rewrite_pattern, RewritePattern,
                                    PatternRewriter)
+from xdsl.utils.hints import isa
 from .dialect import ConstantOp, ReshapeOp, TensorTypeI32, TransposeOp, NoSideEffect
 
 
@@ -89,6 +91,10 @@ class FoldConstantReshapeOptPattern(RewritePattern):
         if not isinstance(reshape_input_op, ConstantOp):
             # Input defined by another transpose? If not, no match.
             return
+
+        assert isa(op.res.typ, TensorTypeI32)
+        assert isa(reshape_input_op.value.data,
+                   ArrayAttr[IntegerAttr[IntegerType]])
 
         new_value = DenseIntOrFPElementsAttr.create_dense_int(
             type=op.res.typ, data=reshape_input_op.value.data.data)

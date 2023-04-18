@@ -8,8 +8,6 @@ from xdsl.dialects.builtin import StringAttr, VectorType, IntegerType, DenseIntO
 
 from typing import Annotated
 
-from riscv.riscv_ssa import RegisterType
-
 VectorTypeI32: TypeAlias = VectorType[IntegerType]
 
 

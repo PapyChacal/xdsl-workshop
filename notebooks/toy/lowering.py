@@ -1,5 +1,5 @@
 from typing import cast
-from xdsl.dialects.builtin import UnrankedTensorType, TensorType, AnyTensorType
+from xdsl.dialects.builtin import UnrankedTensorType, TensorType
 from xdsl.pattern_rewriter import (op_type_rewrite_pattern, RewritePattern,
                                    PatternRewriter)
 
