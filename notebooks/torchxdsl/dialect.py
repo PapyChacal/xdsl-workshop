@@ -1,16 +1,15 @@
+from typing import Annotated
 from xdsl.dialects.builtin import (
     AnyFloat,
     AnyIntegerAttr,
     ArrayAttr,
     DenseIntOrFPElementsAttr,
     DenseResourceAttr,
-    FloatAttr,
-    IntegerAttr,
     StringAttr,
+    AnyFloatAttr,
 )
 from xdsl.ir import Attribute, Data, Dialect, Operation, OpResult, ParametrizedAttribute
 from xdsl.irdl import (
-    Annotated,
     OpAttr,
     Operand,
     ParameterDef,
@@ -27,21 +26,21 @@ class BoolAttr(Data[bool]):
 
     @staticmethod
     def parse_parameter(parser: BaseParser) -> bool:
-        data = parser.try_parse_boolean_literal()
+        data = parser.expect(parser.try_parse_boolean_literal,
+                             "expected boolean")
         if data.text == "true":
             return True
         return False
 
-    @staticmethod
-    def print_parameter(data: bool, printer: Printer) -> None:
-        printer.print_string(f"{data}")
+    def print_parameter(self, printer: Printer) -> None:
+        printer.print_string(f"{self.data}")
 
     @staticmethod
     def from_bool(data: bool):
         return BoolAttr(data)
 
 
-def prase_torch_type_without_prefix(
+def parse_torch_type_without_prefix(
         parser: BaseParser) -> ParametrizedAttribute:
     # Get name of type
     type_name = parser.tokenizer.next_token_of_pattern(ParserCommons.bare_id)
@@ -96,9 +95,7 @@ class ListType(ParametrizedAttribute):
     @staticmethod
     def parse_parameters(parser: BaseParser) -> list[Attribute]:
         parser.parse_char("<")
-        parsed_type = prase_torch_type_without_prefix(parser)
-        if parsed_type is None:
-            raise ValueError("Expected a type")
+        parsed_type = parse_torch_type_without_prefix(parser)
         parser.parse_char(">")
         return [parsed_type]
 
@@ -111,21 +108,21 @@ class ListType(ParametrizedAttribute):
 @irdl_op_definition
 class ConstantIntOp(Operation):
     name = "torch.constant.int"
-    value: OpAttr[IntegerAttr]
+    value: OpAttr[AnyIntegerAttr]
     res: Annotated[OpResult, IntegerType]
 
 
 @irdl_op_definition
 class ConstantFloatOp(Operation):
     name = "torch.constant.float"
-    value: OpAttr[FloatAttr]
+    value: OpAttr[AnyFloatAttr]
     res: Annotated[OpResult, FloatType]
 
 
 @irdl_op_definition
 class ConstantBoolOp(Operation):
     name = "torch.constant.bool"
-    value: OpAttr[IntegerAttr]
+    value: OpAttr[AnyIntegerAttr]
     res: Annotated[OpResult, BoolType]
 
 
