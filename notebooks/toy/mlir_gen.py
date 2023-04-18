@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import field, dataclass
-from typing import Iterable
+from typing import Iterable, NoReturn
 
 from xdsl.ir import MLContext, SSAValue, Operation, Block, Region
 from xdsl.dialects.builtin import ModuleOp, i32, TensorType, UnrankedTensorType
@@ -72,7 +72,7 @@ class MLIRGen:
         """
         Public API: convert the AST for a Toy module (source file) to an MLIR
         Module operation."""
-        
+
         # We create an empty MLIR module and codegen functions one at a time and
         # add them to the module.
         # self.module = ModuleOp.create(regions=[Region()])
@@ -100,7 +100,7 @@ class MLIRGen:
         # TODO: Need location support in xDSL
         # return mlir::FileLineColLoc::get(builder.getStringAttr(*loc.file), loc.line, loc.col);
         pass
-    
+
     def declare(self, var: str, value: SSAValue) -> bool:
         """
         Declare a variable in the current scope, return success if the variable
@@ -115,7 +115,7 @@ class MLIRGen:
         'Build a tensor type from a list of shape dimensions.'
         # If the shape is empty, then this type is unranked.
         if len(shape):
-            return TensorType.from_type_and_list(i32, type)
+            return TensorType.from_type_and_list(i32, shape)
         else:
             return UnrankedTensorTypeI32.from_type(i32)
 
@@ -135,16 +135,16 @@ class MLIRGen:
 
         # Create a scope in the symbol table to hold variable declarations.
         self.symbol_table = ScopedSymbolTable()
-        
+
         proto_args = function_ast.proto.args
-        
+
         # Create the MLIR block for the current function
         self.block = Block.from_arg_types([UnrankedTensorType.from_type(i32) for _ in range(len(proto_args))])
 
         # Declare all the function arguments in the symbol table.
         for name, value in zip(proto_args, self.block.args):
             self.declare(name.name, value)
-        
+
         # Emit the body of the function.
         self.mlir_gen_expr_list(function_ast.body)
 
@@ -162,7 +162,7 @@ class MLIRGen:
         if return_op is None:
             return_op = ReturnOp.from_input()
             self.block.add_op(return_op)
-            
+
 
         input_types = [self.get_type([]) for _ in range(len(function_ast.proto.args))]
 
@@ -171,7 +171,7 @@ class MLIRGen:
         # main should be public, all the others private
         private = function_ast.proto.name != 'main'
 
-        func = FuncOp.from_region(function_ast.proto.name, func_type, 
+        func = FuncOp.from_region(function_ast.proto.name, func_type,
                                   Region.from_block_list([self.block]), private=private)
 
         # clean up
@@ -200,7 +200,7 @@ class MLIRGen:
         rhs = self.mlir_gen_expr(binop.rhs)
 
         # location = self.loc(binop.loc)
-        
+
         # Derive the operation name from the binary operator. At the moment we only
         # support '+' and '*'.
         match binop.op:
@@ -210,7 +210,7 @@ class MLIRGen:
                 op = MulOp.from_summands(lhs, rhs)
             case _:
                 self.error(f'Unsupported binary operation `{binop.op}`')
-        
+
         self.block.add_op(op)
 
         return op.res
@@ -317,7 +317,7 @@ class MLIRGen:
             op = TransposeOp.from_input(operands[0])
             self.block.add_op(op)
             return op.res
-        
+
         # Otherwise this is a call to a user-defined function. Calls to
         # user-defined functions are mapped to a custom call that takes the callee
         # name as an attribute.
@@ -402,5 +402,5 @@ class MLIRGen:
                 # Generic expression dispatch codegen.
                 case _: self.mlir_gen_expr(expr)
 
-    def error(self, message: str, cause: Exception | None = None):
+    def error(self, message: str, cause: Exception | None = None) -> NoReturn:
         raise MLIRGenError(message) from cause
