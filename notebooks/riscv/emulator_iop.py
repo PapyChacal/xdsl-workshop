@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from riscemu import RunConfig, UserModeCPU, RV32I, RV32M, AssemblyFileLoader
+# pyright: reportMissingTypeStubs=false
+
+from riscemu import RunConfig, UserModeCPU, RV32I, RV32M, AssemblyFileLoader, MMU
 from riscemu.instructions import InstructionSet, Instruction
 
 from io import StringIO
@@ -17,10 +19,12 @@ SCALL_EXIT = 93
 
 
 class RV_Debug(InstructionSet):
+
     # this instruction will dissappear into our emualtor soon-ish
     def instruction_print(self, ins: Instruction):
         reg = ins.get_reg(0)
-        print("register {} contains value {}".format(reg, self.regs.get(reg)))
+        value = self.regs.get(reg)  # pyright: ignore[reportUnknownMemberType]
+        print(f"register {reg} contains value {value}")
 
 
 class _SSAVALNamer:
@@ -61,7 +65,7 @@ def print_riscv_ssa(module: ModuleOp, memory: int = 1024) -> str:
     out = ""
     reg = _SSAVALNamer()
 
-    def get_all_regs(op):
+    def get_all_regs(op: Operation):
         for name in ('rd', 'rs', 'rt', 'rs1', 'rs2', 'rs3', 'offset',
                      'immediate'):
             if hasattr(op, name):
@@ -120,14 +124,18 @@ def run_riscv(code: str,
         unlimited_registers=unlimited_regs,
     )
 
-    cpu = UserModeCPU((RV32I, RV32M, RV_Debug, *extensions), cfg)
+    cpu = UserModeCPU([RV32I, RV32M, RV_Debug, *extensions], cfg)
 
     io = StringIO(code)
 
-    loader = AssemblyFileLoader.instantiate('example.asm', [])
-    cpu.load_program(loader.parse_io(io))
+    loader = AssemblyFileLoader.instantiate(  # pyright: ignore[reportUnknownMemberType]
+        'example.asm', {})
+    assert isinstance(loader, AssemblyFileLoader)
+    cpu.load_program(
+        loader.parse_io(io))  # pyright: ignore[reportUnknownMemberType]
 
     try:
-        cpu.launch(cpu.mmu.programs[-1], verbosity > 1)
+        mmu = cast(MMU, cpu.mmu)  # pyright: ignore[reportUnknownMemberType]
+        cpu.launch(mmu.programs[-1], verbosity > 1)
     except Exception as ex:
         print(ex)
