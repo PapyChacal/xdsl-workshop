@@ -200,7 +200,8 @@ class LowerAllocOp(RewritePattern):
         assert block is not None
         heap_op = block.ops[0]
         # TODO: check that this is indeed the heap op
-        # assert isinstance(heap_op, rd.LIOp) and isinstance(heap_op.immediate, rd.LabelAttr)
+        # assert isinstance(heap_op, rd.LIOp)
+        # and isinstance(heap_op.immediate, rd.LabelAttr)
         return heap_op.results[0]
 
     @op_type_rewrite_pattern
