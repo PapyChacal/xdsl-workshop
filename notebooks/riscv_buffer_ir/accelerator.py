@@ -1,7 +1,6 @@
 # pyright: reportMissingTypeStubs=false
 
-from dataclasses import dataclass
-from typing import IO, Any, ClassVar
+from typing import IO, ClassVar
 
 from riscemu.instructions import InstructionSet, Instruction
 from riscemu.MMU import MMU
@@ -15,7 +14,9 @@ def tensor_description(shape: list[int], data: list[int]) -> str:
         return str(data)
     if len(shape):
         size = reduce(lambda acc, el: acc * el, shape[1:], 1)
-        return f'[{", ".join(tensor_description(shape[1:], data[start:start+size]) for start in range(0, size * shape[0], size))}]'
+        inner = (tensor_description(shape[1:], data[start:start + size])
+                 for start in range(0, size * shape[0], size))
+        return f'[{", ".join(inner)}]'
     else:
         return '[]'
 
@@ -24,7 +25,7 @@ def tensor_description(shape: list[int], data: list[int]) -> str:
 class ToyAccelerator(InstructionSet):
     # each method beginning with instruction_ will be available to the Emulator
 
-    stream: IO[str] | None = None
+    stream: ClassVar[IO[str] | None] = None
 
     # add typed helpers
     @property
@@ -109,7 +110,7 @@ class ToyAccelerator(InstructionSet):
         shape = self.vector_data(self.tensor_shape(t_ptr))
         data = self.vector_data(self.tensor_data(t_ptr))
 
-        print(tensor_description(shape, data), file=self.stream)
+        print(tensor_description(shape, data), file=type(self).stream)
 
     def instruction_buffer_add(self, ins: Instruction):
 
