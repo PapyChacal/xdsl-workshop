@@ -1,5 +1,8 @@
 # pyright: reportMissingTypeStubs=false
 
+from dataclasses import dataclass
+from typing import IO, Any, ClassVar
+
 from riscemu.instructions import InstructionSet, Instruction
 from riscemu.MMU import MMU
 from riscemu.types import Int32
@@ -20,6 +23,8 @@ def tensor_description(shape: list[int], data: list[int]) -> str:
 # Define a RISC-V ISA extension by subclassing InstructionSet
 class ToyAccelerator(InstructionSet):
     # each method beginning with instruction_ will be available to the Emulator
+
+    stream: IO[str] | None = None
 
     # add typed helpers
     @property
@@ -104,7 +109,7 @@ class ToyAccelerator(InstructionSet):
         shape = self.vector_data(self.tensor_shape(t_ptr))
         data = self.vector_data(self.tensor_data(t_ptr))
 
-        print(tensor_description(shape, data))
+        print(tensor_description(shape, data), file=self.stream)
 
     def instruction_buffer_add(self, ins: Instruction):
 
@@ -151,3 +156,11 @@ class ToyAccelerator(InstructionSet):
         self.ptr_write(heap_ptr, value=new_heap_count)
 
         self.set_reg(destination_ptr_reg, result_ptr)
+
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, ToyAccelerator):
+            return False
+        return self.stream is __value.stream
+
+    def __hash__(self) -> int:
+        return hash(id(self.stream))
