@@ -1,2 +1,2 @@
-git+https://github.com/xdslproject/xdsl.git@eea614171f1711bfc37ef4fe8cc10c92775f0b93#egg=xdsl
+git+https://github.com/xdslproject/xdsl.git@cee99e1c46620b98a44ac86a4839742b3874b0a8#egg=xdsl
 git+https://github.com/antonlydike/riscemu.git@b5ebe13528cdfe454438e4da6b3d76a3dda2ed1f#egg=riscemu
